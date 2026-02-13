@@ -16,10 +16,14 @@
   .panel-left { width: 240px; border-right: 1px solid #2a2d3a; overflow-y: auto; background: #14161e; display: flex; flex-direction: column; }
   .panel-left h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: #888; padding: 12px 16px 8px; }
   .sort-bar { padding: 8px 16px 12px; border-bottom: 1px solid #2a2d3a; }
-  .sort-bar label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #888; display: block; margin-bottom: 4px; }
-  .sort-bar input { width: 100%; padding: 6px 8px; border: 1px solid #2a2d3a; border-radius: 4px; background: #1a1d27; color: #e0e0e0; font-size: 0.85rem; outline: none; }
-  .sort-bar input:focus { border-color: #7c8aff; }
-  .sort-bar input::placeholder { color: #555; }
+  .sort-mode { display: flex; gap: 10px; margin-bottom: 6px; }
+  .sort-mode label { font-size: 0.75rem; color: #aaa; cursor: pointer; display: flex; align-items: center; gap: 3px; }
+  .sort-mode input[type="radio"] { accent-color: #7c8aff; margin: 0; }
+  .sort-bar .sort-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #888; display: block; margin-bottom: 4px; }
+  .sort-bar input[type="text"] { width: 100%; padding: 6px 8px; border: 1px solid #2a2d3a; border-radius: 4px; background: #1a1d27; color: #e0e0e0; font-size: 0.85rem; outline: none; }
+  .sort-bar input[type="text"]:focus { border-color: #7c8aff; }
+  .sort-bar input[type="text"]::placeholder { color: #555; }
+  .sort-bar .sort-status { font-size: 0.7rem; color: #666; margin-top: 4px; }
   #clip-list { overflow-y: auto; flex: 1; }
   .clip-item { padding: 10px 16px; cursor: pointer; font-size: 0.9rem; border-bottom: 1px solid #1e2030; transition: background 0.15s; }
   .clip-item:hover { background: #1e2030; }
@@ -62,8 +66,15 @@
   <div class="panel-left">
     <h2>Clips</h2>
     <div class="sort-bar">
-      <label for="text-sort">Text Sort:</label>
-      <input type="text" id="text-sort" placeholder='e.g. "high pitched beep"'>
+      <div class="sort-mode">
+        <label><input type="radio" name="sort-mode" value="none" checked> None</label>
+        <label><input type="radio" name="sort-mode" value="text"> Text</label>
+        <label><input type="radio" name="sort-mode" value="learned"> Learned</label>
+      </div>
+      <div id="text-sort-wrap" style="display:none">
+        <input type="text" id="text-sort" placeholder='e.g. "high pitched beep"'>
+      </div>
+      <div id="sort-status" class="sort-status"></div>
     </div>
     <div id="clip-list"></div>
   </div>
@@ -91,7 +102,8 @@
   let clips = [];
   let votes = { good: [], bad: [] };
   let selected = null;
-  let sortOrder = null;  // null = default order, or [{id, similarity}, ...]
+  let sortOrder = null;   // null = default, or [{id, score}, ...]
+  let sortMode = "none";  // "none" | "text" | "learned"
   let sortTimer = null;
 
   const clipList = document.getElementById("clip-list");
@@ -99,6 +111,74 @@
   const goodList = document.getElementById("good-list");
   const badList = document.getElementById("bad-list");
   const textSortInput = document.getElementById("text-sort");
+  const textSortWrap = document.getElementById("text-sort-wrap");
+  const sortStatus = document.getElementById("sort-status");
+
+  // ---- Sort mode switching ----
+
+  document.querySelectorAll('input[name="sort-mode"]').forEach(radio => {
+    radio.addEventListener("change", () => {
+      sortMode = radio.value;
+      textSortWrap.style.display = sortMode === "text" ? "" : "none";
+      sortStatus.textContent = "";
+      if (sortMode === "none") {
+        sortOrder = null;
+        renderClipList();
+      } else if (sortMode === "text") {
+        onTextSortInput();
+      } else if (sortMode === "learned") {
+        fetchLearnedSort();
+      }
+    });
+  });
+
+  // ---- Text sort ----
+
+  async function fetchTextSort(text) {
+    const res = await fetch("/api/sort", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    const data = await res.json();
+    sortOrder = data.map(e => ({ id: e.id, score: e.similarity }));
+    renderClipList();
+  }
+
+  function onTextSortInput() {
+    clearTimeout(sortTimer);
+    const text = textSortInput.value.trim();
+    if (!text) {
+      sortOrder = null;
+      renderClipList();
+      return;
+    }
+    sortTimer = setTimeout(() => fetchTextSort(text), 400);
+  }
+
+  textSortInput.addEventListener("input", onTextSortInput);
+
+  // ---- Learned sort ----
+
+  async function fetchLearnedSort() {
+    sortStatus.textContent = "Training\u2026";
+    const res = await fetch("/api/learned-sort", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!res.ok) {
+      sortOrder = null;
+      sortStatus.textContent = "Vote good & bad first";
+      renderClipList();
+      return;
+    }
+    const data = await res.json();
+    sortOrder = data;  // already [{id, score}, ...]
+    sortStatus.textContent = "";
+    renderClipList();
+  }
+
+  // ---- Rendering ----
 
   async function fetchClips() {
     const res = await fetch("/api/clips");
@@ -113,38 +193,13 @@
     if (selected) renderCenter();
   }
 
-  async function fetchSort(text) {
-    const res = await fetch("/api/sort", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-    });
-    sortOrder = await res.json();
-    renderClipList();
-  }
-
-  function onSortInput() {
-    clearTimeout(sortTimer);
-    const text = textSortInput.value.trim();
-    if (!text) {
-      sortOrder = null;
-      renderClipList();
-      return;
-    }
-    sortTimer = setTimeout(() => fetchSort(text), 400);
-  }
-
-  textSortInput.addEventListener("input", onSortInput);
-
   function renderClipList() {
     clipList.innerHTML = "";
-    // Build a similarity lookup from sortOrder
-    const simMap = {};
+    const scoreMap = {};
     if (sortOrder) {
-      sortOrder.forEach(s => { simMap[s.id] = s.similarity; });
+      sortOrder.forEach(s => { scoreMap[s.id] = s.score; });
     }
 
-    // Determine display order
     let ordered;
     if (sortOrder) {
       ordered = sortOrder.map(s => clips.find(c => c.id === s.id)).filter(Boolean);
@@ -156,8 +211,8 @@
       const div = document.createElement("div");
       div.className = "clip-item" + (selected === c.id ? " active" : "");
       let html = `Clip #${c.id}`;
-      if (simMap[c.id] !== undefined) {
-        html += `<span class="sim">${(simMap[c.id] * 100).toFixed(1)}%</span>`;
+      if (scoreMap[c.id] !== undefined) {
+        html += `<span class="sim">${(scoreMap[c.id] * 100).toFixed(1)}%</span>`;
       }
       html += `<div class="sub">${c.frequency} Hz &middot; ${c.duration}s</div>`;
       div.innerHTML = html;
@@ -199,6 +254,7 @@
       body: JSON.stringify({ vote }),
     });
     await fetchVotes();
+    if (sortMode === "learned") fetchLearnedSort();
   }
 
   function renderVotes() {

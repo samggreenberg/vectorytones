@@ -4,6 +4,7 @@ import struct
 import wave
 
 import numpy as np
+import torch
 import pytest
 
 import app as app_module
@@ -353,3 +354,102 @@ class TestSortClips:
     def test_whitespace_only_returns_400(self, client):
         resp = client.post("/api/sort", json={"text": "   "})
         assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# train_and_score
+# ---------------------------------------------------------------------------
+
+class TestTrainAndScore:
+    def test_returns_list_of_scored_clips(self):
+        app_module.good_votes.update({1, 2})
+        app_module.bad_votes.update({3, 4})
+        results = app_module.train_and_score()
+        assert len(results) == app_module.NUM_CLIPS
+        for entry in results:
+            assert "id" in entry
+            assert "score" in entry
+
+    def test_scores_between_zero_and_one(self):
+        app_module.good_votes.update({1, 2})
+        app_module.bad_votes.update({3, 4})
+        results = app_module.train_and_score()
+        for entry in results:
+            assert 0.0 <= entry["score"] <= 1.0
+
+    def test_results_sorted_descending(self):
+        app_module.good_votes.update({1, 2})
+        app_module.bad_votes.update({3, 4})
+        results = app_module.train_and_score()
+        scores = [e["score"] for e in results]
+        assert scores == sorted(scores, reverse=True)
+
+    def test_good_clips_scored_higher_than_bad(self):
+        app_module.good_votes.update({1, 2, 3})
+        app_module.bad_votes.update({18, 19, 20})
+        results = app_module.train_and_score()
+        score_map = {e["id"]: e["score"] for e in results}
+        avg_good = np.mean([score_map[i] for i in app_module.good_votes])
+        avg_bad = np.mean([score_map[i] for i in app_module.bad_votes])
+        assert avg_good > avg_bad
+
+
+# ---------------------------------------------------------------------------
+# POST /api/learned-sort
+# ---------------------------------------------------------------------------
+
+class TestLearnedSort:
+    def test_returns_all_clips(self, client):
+        app_module.good_votes.update({1, 2})
+        app_module.bad_votes.update({3, 4})
+        resp = client.post("/api/learned-sort")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert len(data) == app_module.NUM_CLIPS
+
+    def test_result_fields(self, client):
+        app_module.good_votes.update({1, 2})
+        app_module.bad_votes.update({3, 4})
+        resp = client.post("/api/learned-sort")
+        data = resp.get_json()
+        for entry in data:
+            assert "id" in entry
+            assert "score" in entry
+
+    def test_sorted_descending(self, client):
+        app_module.good_votes.update({1, 2})
+        app_module.bad_votes.update({3, 4})
+        resp = client.post("/api/learned-sort")
+        data = resp.get_json()
+        scores = [e["score"] for e in data]
+        assert scores == sorted(scores, reverse=True)
+
+    def test_all_clip_ids_present(self, client):
+        app_module.good_votes.update({1, 2})
+        app_module.bad_votes.update({3, 4})
+        resp = client.post("/api/learned-sort")
+        data = resp.get_json()
+        ids = {e["id"] for e in data}
+        assert ids == set(range(1, app_module.NUM_CLIPS + 1))
+
+    def test_no_votes_returns_400(self, client):
+        resp = client.post("/api/learned-sort")
+        assert resp.status_code == 400
+
+    def test_only_good_votes_returns_400(self, client):
+        app_module.good_votes.update({1, 2})
+        resp = client.post("/api/learned-sort")
+        assert resp.status_code == 400
+
+    def test_only_bad_votes_returns_400(self, client):
+        app_module.bad_votes.update({1, 2})
+        resp = client.post("/api/learned-sort")
+        assert resp.status_code == 400
+
+    def test_scores_in_valid_range(self, client):
+        app_module.good_votes.update({1, 2})
+        app_module.bad_votes.update({3, 4})
+        resp = client.post("/api/learned-sort")
+        data = resp.get_json()
+        for entry in data:
+            assert 0.0 <= entry["score"] <= 1.0

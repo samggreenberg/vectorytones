@@ -4,6 +4,8 @@ import struct
 import wave
 
 import numpy as np
+import torch
+import torch.nn as nn
 import laion_clap
 
 from flask import Flask, jsonify, request, send_file
@@ -170,6 +172,60 @@ def sort_clips():
         results.append({"id": clip_id, "similarity": round(similarity, 4)})
 
     results.sort(key=lambda x: x["similarity"], reverse=True)
+    return jsonify(results)
+
+
+def train_and_score():
+    """Train a small MLP on voted clip embeddings and score every clip."""
+    X_list = []
+    y_list = []
+    for cid in good_votes:
+        X_list.append(clips[cid]["embedding"])
+        y_list.append(1.0)
+    for cid in bad_votes:
+        X_list.append(clips[cid]["embedding"])
+        y_list.append(0.0)
+
+    X = torch.tensor(np.array(X_list), dtype=torch.float32)
+    y = torch.tensor(y_list, dtype=torch.float32).unsqueeze(1)
+
+    input_dim = X.shape[1]
+    model = nn.Sequential(
+        nn.Linear(input_dim, 64),
+        nn.ReLU(),
+        nn.Linear(64, 1),
+        nn.Sigmoid(),
+    )
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    loss_fn = nn.BCELoss()
+
+    model.train()
+    for _ in range(200):
+        optimizer.zero_grad()
+        loss = loss_fn(model(X), y)
+        loss.backward()
+        optimizer.step()
+
+    # Score every clip
+    model.eval()
+    all_ids = sorted(clips.keys())
+    all_embs = np.array([clips[cid]["embedding"] for cid in all_ids])
+    X_all = torch.tensor(all_embs, dtype=torch.float32)
+    with torch.no_grad():
+        scores = model(X_all).squeeze(1).tolist()
+
+    results = [{"id": cid, "score": round(s, 4)} for cid, s in zip(all_ids, scores)]
+    results.sort(key=lambda x: x["score"], reverse=True)
+    return results
+
+
+@app.route("/api/learned-sort", methods=["POST"])
+def learned_sort():
+    """Train MLP on voted clips, return all clips sorted by predicted score."""
+    if not good_votes or not bad_votes:
+        return jsonify({"error": "need at least one good and one bad vote"}), 400
+    results = train_and_score()
     return jsonify(results)
 
 
