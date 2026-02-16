@@ -89,7 +89,7 @@ DEMO_DATASETS = {
             "toilet_flush",
             "thunderstorm",
         ],
-        "description": "Animal and nature sounds"
+        "description": "Animal and nature sounds",
     },
     "natural": {
         "categories": [
@@ -104,7 +104,7 @@ DEMO_DATASETS = {
             "thunderstorm",
             "frog",
         ],
-        "description": "Natural environmental sounds"
+        "description": "Natural environmental sounds",
     },
     "urban": {
         "categories": [
@@ -128,7 +128,7 @@ DEMO_DATASETS = {
             "fireworks",
             "hand_saw",
         ],
-        "description": "Urban and mechanical sounds"
+        "description": "Urban and mechanical sounds",
     },
     "household": {
         "categories": [
@@ -150,7 +150,7 @@ DEMO_DATASETS = {
             "drinking_sipping",
             "footsteps",
         ],
-        "description": "Household and human sounds"
+        "description": "Household and human sounds",
     },
 }
 
@@ -315,7 +315,9 @@ def load_dataset_from_pickle(file_path: Path):
             }
 
     if missing_audio > 0:
-        print(f"WARNING: {missing_audio} audio files missing from {file_path}", flush=True)
+        print(
+            f"WARNING: {missing_audio} audio files missing from {file_path}", flush=True
+        )
 
 
 def embed_audio_file(audio_path: Path) -> Optional[np.ndarray]:
@@ -473,7 +475,9 @@ def load_demo_dataset(dataset_name: str):
         # Check if any clips were actually loaded
         if len(clips) == 0:
             # Pickle file exists but audio files are missing, delete and re-embed
-            update_progress("loading", f"Audio files missing, re-embedding {dataset_name}...", 0, 0)
+            update_progress(
+                "loading", f"Audio files missing, re-embedding {dataset_name}...", 0, 0
+            )
             pkl_file.unlink()
         else:
             update_progress("idle", f"Loaded {dataset_name} dataset")
@@ -1016,7 +1020,7 @@ def set_inclusion():
         return jsonify({"error": "inclusion must be a number"}), 400
 
     # Clamp to -10 to +10 range
-    new_inclusion = max(-10, min(10, new_inclusion))
+    new_inclusion = int(max(-10, min(10, new_inclusion)))
     inclusion = new_inclusion
 
     return jsonify({"inclusion": inclusion})
@@ -1158,7 +1162,7 @@ def demo_dataset_list():
                 "num_categories": num_categories,
                 "num_files": num_files,
                 "download_size_mb": round(download_size_mb, 1),
-                "description": dataset_info.get("description", "")
+                "description": dataset_info.get("description", ""),
             }
         )
     return jsonify({"datasets": demos})
