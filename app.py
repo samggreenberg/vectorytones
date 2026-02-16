@@ -800,6 +800,86 @@ def import_labels():
     return jsonify({"applied": applied, "skipped": skipped})
 
 
+@app.route("/api/detector/export", methods=["POST"])
+def export_detector():
+    """Train MLP on current votes and export the model weights."""
+    if not good_votes or not bad_votes:
+        return jsonify({"error": "need at least one good and one bad vote"}), 400
+
+    # Train the model
+    X_list = []
+    y_list = []
+    for cid in good_votes:
+        X_list.append(clips[cid]["embedding"])
+        y_list.append(1.0)
+    for cid in bad_votes:
+        X_list.append(clips[cid]["embedding"])
+        y_list.append(0.0)
+
+    X = torch.tensor(np.array(X_list), dtype=torch.float32)
+    y = torch.tensor(y_list, dtype=torch.float32).unsqueeze(1)
+
+    input_dim = X.shape[1]
+
+    # Calculate threshold using cross-calibration
+    threshold = calculate_cross_calibration_threshold(X_list, y_list, input_dim)
+
+    # Train final model on all data
+    model = train_model(X, y, input_dim)
+
+    # Extract model weights
+    state_dict = model.state_dict()
+    weights = {}
+    for key, value in state_dict.items():
+        weights[key] = value.tolist()
+
+    return jsonify({"weights": weights, "threshold": round(threshold, 4)})
+
+
+@app.route("/api/detector-sort", methods=["POST"])
+def detector_sort():
+    """Score all clips using a loaded detector model."""
+    data = request.get_json(force=True)
+    detector = data.get("detector")
+    if not detector:
+        return jsonify({"error": "detector is required"}), 400
+
+    weights = detector.get("weights")
+    threshold = detector.get("threshold", 0.5)
+
+    if not weights:
+        return jsonify({"error": "detector weights are required"}), 400
+
+    # Reconstruct the model from weights
+    # Determine input_dim from the first layer weights
+    input_dim = len(weights["0.weight"][0])
+
+    model = nn.Sequential(
+        nn.Linear(input_dim, 64),
+        nn.ReLU(),
+        nn.Linear(64, 1),
+        nn.Sigmoid(),
+    )
+
+    # Load weights
+    state_dict = {}
+    for key, value in weights.items():
+        state_dict[key] = torch.tensor(value, dtype=torch.float32)
+    model.load_state_dict(state_dict)
+    model.eval()
+
+    # Score every clip
+    all_ids = sorted(clips.keys())
+    all_embs = np.array([clips[cid]["embedding"] for cid in all_ids])
+    X_all = torch.tensor(all_embs, dtype=torch.float32)
+    with torch.no_grad():
+        scores = model(X_all).squeeze(1).tolist()
+
+    results = [{"id": cid, "score": round(s, 4)} for cid, s in zip(all_ids, scores)]
+    results.sort(key=lambda x: x["score"], reverse=True)
+    return jsonify({"results": results, "threshold": round(threshold, 4)})
+
+
 # ---------------------------------------------------------------------------
 # Dataset management routes
 # ---------------------------------------------------------------------------
