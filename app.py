@@ -8,7 +8,6 @@ import csv
 import gc
 import hashlib
 import io
-import json
 import math
 import pickle
 import struct
@@ -63,26 +62,78 @@ progress_data = {
 # Demo dataset definitions (from setup_datasets.py)
 DEMO_DATASETS = {
     "animals": [
-        "dog", "rooster", "pig", "cow", "frog", "cat", "hen", "insects",
-        "sheep", "crow", "rain", "sea_waves", "crackling_fire", "crickets",
-        "chirping_birds", "water_drops", "wind", "pouring_water",
-        "toilet_flush", "thunderstorm",
+        "dog",
+        "rooster",
+        "pig",
+        "cow",
+        "frog",
+        "cat",
+        "hen",
+        "insects",
+        "sheep",
+        "crow",
+        "rain",
+        "sea_waves",
+        "crackling_fire",
+        "crickets",
+        "chirping_birds",
+        "water_drops",
+        "wind",
+        "pouring_water",
+        "toilet_flush",
+        "thunderstorm",
     ],
     "natural": [
-        "rain", "sea_waves", "crackling_fire", "crickets", "chirping_birds",
-        "water_drops", "wind", "pouring_water", "thunderstorm", "frog",
+        "rain",
+        "sea_waves",
+        "crackling_fire",
+        "crickets",
+        "chirping_birds",
+        "water_drops",
+        "wind",
+        "pouring_water",
+        "thunderstorm",
+        "frog",
     ],
     "urban": [
-        "clock_alarm", "clock_tick", "door_wood_knock", "mouse_click",
-        "keyboard_typing", "door_wood_creaks", "can_opening", "washing_machine",
-        "vacuum_cleaner", "helicopter", "chainsaw", "siren", "car_horn",
-        "engine", "train", "church_bells", "airplane", "fireworks", "hand_saw",
+        "clock_alarm",
+        "clock_tick",
+        "door_wood_knock",
+        "mouse_click",
+        "keyboard_typing",
+        "door_wood_creaks",
+        "can_opening",
+        "washing_machine",
+        "vacuum_cleaner",
+        "helicopter",
+        "chainsaw",
+        "siren",
+        "car_horn",
+        "engine",
+        "train",
+        "church_bells",
+        "airplane",
+        "fireworks",
+        "hand_saw",
     ],
     "household": [
-        "clock_alarm", "clock_tick", "door_wood_knock", "mouse_click",
-        "keyboard_typing", "door_wood_creaks", "can_opening", "washing_machine",
-        "vacuum_cleaner", "sneezing", "coughing", "breathing", "laughing",
-        "brushing_teeth", "snoring", "drinking_sipping", "footsteps",
+        "clock_alarm",
+        "clock_tick",
+        "door_wood_knock",
+        "mouse_click",
+        "keyboard_typing",
+        "door_wood_creaks",
+        "can_opening",
+        "washing_machine",
+        "vacuum_cleaner",
+        "sneezing",
+        "coughing",
+        "breathing",
+        "laughing",
+        "brushing_teeth",
+        "snoring",
+        "drinking_sipping",
+        "footsteps",
     ],
 }
 
@@ -147,11 +198,11 @@ def init_clips():
         )
         inputs = clap_processor(
             audio=audio_arrays,
-            return_tensors="pt",
-            padding="max_length",  # Pad to 10s to match HTSAT training
-            max_length=480000,  # 48kHz * 10s
-            truncation=True,
-            sampling_rate=SAMPLE_RATE,
+            return_tensors="pt",  # type: ignore
+            padding="max_length",  # Pad to 10s to match HTSAT training # type: ignore
+            max_length=480000,  # 48kHz * 10s # type: ignore
+            truncation=True,  # type: ignore
+            sampling_rate=SAMPLE_RATE,  # type: ignore
         )
         with torch.no_grad():
             outputs = clap_model.audio_model(**inputs)
@@ -256,12 +307,12 @@ def embed_audio_file(audio_path: Path) -> Optional[np.ndarray]:
         # Get embedding from CLAP
         inputs = clap_processor(
             audio=audio_data,
-            sampling_rate=SAMPLE_RATE,
-            return_tensors="pt",
-            padding="max_length",
-            max_length=480000,
-            truncation=True,
-        )
+            sampling_rate=SAMPLE_RATE,  # type: ignore
+            return_tensors="pt",  # type: ignore
+            padding="max_length",  # type: ignore
+            max_length=480000,  # type: ignore
+            truncation=True,  # type: ignore
+        )  # type: ignore
         with torch.no_grad():
             outputs = clap_model.audio_model(**inputs)
             embedding = clap_model.audio_projection(outputs.pooler_output).numpy()
@@ -334,7 +385,9 @@ def download_file_with_progress(url: str, dest_path: Path):
         for chunk in response.iter_content(chunk_size=8192):
             size = f.write(chunk)
             downloaded += size
-            update_progress("downloading", f"Downloading ESC-50...", downloaded, total_size)
+            update_progress(
+                "downloading", "Downloading ESC-50...", downloaded, total_size
+            )
 
 
 def download_esc50() -> Path:
@@ -436,13 +489,21 @@ def load_demo_dataset(dataset_name: str):
     # Save for future use
     EMBEDDINGS_DIR.mkdir(parents=True, exist_ok=True)
     with open(pkl_file, "wb") as f:
-        pickle.dump({
-            "name": dataset_name,
-            "clips": {cid: {k: v.tolist() if isinstance(v, np.ndarray) else v
-                           for k, v in clip.items() if k != "wav_bytes"}
-                     for cid, clip in clips.items()},
-            "audio_dir": str(audio_dir.absolute()),
-        }, f)
+        pickle.dump(
+            {
+                "name": dataset_name,
+                "clips": {
+                    cid: {
+                        k: v.tolist() if isinstance(v, np.ndarray) else v
+                        for k, v in clip.items()
+                        if k != "wav_bytes"
+                    }
+                    for cid, clip in clips.items()
+                },
+                "audio_dir": str(audio_dir.absolute()),
+            },
+            f,
+        )
 
     update_progress("idle", f"Loaded {dataset_name} dataset")
 
@@ -456,7 +517,9 @@ def export_dataset_to_file() -> bytes:
                 "duration": clip["duration"],
                 "file_size": clip["file_size"],
                 "md5": clip["md5"],
-                "embedding": clip["embedding"].tolist() if isinstance(clip["embedding"], np.ndarray) else clip["embedding"],
+                "embedding": clip["embedding"].tolist()
+                if isinstance(clip["embedding"], np.ndarray)
+                else clip["embedding"],
                 "filename": clip.get("filename", f"clip_{cid}.wav"),
                 "category": clip.get("category", "unknown"),
                 "wav_bytes": clip["wav_bytes"],
@@ -582,7 +645,7 @@ def sort_clips():
     if clap_model is None or clap_processor is None:
         return jsonify({"error": "CLAP model not loaded"}), 500
 
-    inputs = clap_processor(text=[text], return_tensors="pt")
+    inputs = clap_processor(text=[text], return_tensors="pt")  # type: ignore
     with torch.no_grad():
         outputs = clap_model.text_model(**inputs)
         text_vec = clap_model.text_projection(outputs.pooler_output).numpy()[0]
@@ -889,11 +952,13 @@ def detector_sort():
 @app.route("/api/dataset/status")
 def dataset_status():
     """Return the current dataset status."""
-    return jsonify({
-        "loaded": len(clips) > 0,
-        "num_clips": len(clips),
-        "has_votes": len(good_votes) + len(bad_votes) > 0,
-    })
+    return jsonify(
+        {
+            "loaded": len(clips) > 0,
+            "num_clips": len(clips),
+            "has_votes": len(good_votes) + len(bad_votes) > 0,
+        }
+    )
 
 
 @app.route("/api/dataset/progress")
@@ -909,11 +974,13 @@ def demo_dataset_list():
     demos = []
     for name in DEMO_DATASETS.keys():
         pkl_file = EMBEDDINGS_DIR / f"{name}.pkl"
-        demos.append({
-            "name": name,
-            "ready": pkl_file.exists(),
-            "num_categories": len(DEMO_DATASETS[name]),
-        })
+        demos.append(
+            {
+                "name": name,
+                "ready": pkl_file.exists(),
+                "num_categories": len(DEMO_DATASETS[name]),
+            }
+        )
     return jsonify({"datasets": demos})
 
 
