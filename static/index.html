@@ -66,14 +66,21 @@
   <div class="panel-left">
     <h2>Clips</h2>
     <div class="sort-bar">
+      <span class="sort-label">Sort</span>
       <div class="sort-mode">
         <label><input type="radio" name="sort-mode" value="none" checked> None</label>
         <label><input type="radio" name="sort-mode" value="text"> Text</label>
-        <label><input type="radio" name="sort-mode" value="learned"> Learned</label>
+        <label><input type="radio" name="sort-mode" value="learned"> Learn</label>
       </div>
       <div id="text-sort-wrap" style="display:none">
         <input type="text" id="text-sort" placeholder='e.g. "high pitched beep"'>
       </div>
+      <span class="sort-label" style="margin-top:8px">Select</span>
+      <div class="sort-mode">
+        <label><input type="radio" name="select-mode" value="good" checked> Good</label>
+        <label><input type="radio" name="select-mode" value="hard"> Hard</label>
+      </div>
+      <button id="next-clip-btn" style="width:100%; margin-top:8px; padding:6px; background:#7c8aff; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:0.85rem;">Next Clip</button>
       <div id="sort-status" class="sort-status"></div>
     </div>
     <div id="clip-list"></div>
@@ -104,6 +111,8 @@
   let selected = null;
   let sortOrder = null;   // null = default, or [{id, score}, ...]
   let sortMode = "none";  // "none" | "text" | "learned"
+  let selectMode = "good"; // "good" | "hard"
+  let threshold = null;    // threshold for Good/Bad boundary
   let sortTimer = null;
 
   const clipList = document.getElementById("clip-list");
@@ -113,6 +122,7 @@
   const textSortInput = document.getElementById("text-sort");
   const textSortWrap = document.getElementById("text-sort-wrap");
   const sortStatus = document.getElementById("sort-status");
+  const nextClipBtn = document.getElementById("next-clip-btn");
 
   // ---- Sort mode switching ----
 
@@ -123,12 +133,21 @@
       sortStatus.textContent = "";
       if (sortMode === "none") {
         sortOrder = null;
+        threshold = null;
         renderClipList();
       } else if (sortMode === "text") {
         onTextSortInput();
       } else if (sortMode === "learned") {
         fetchLearnedSort();
       }
+    });
+  });
+
+  // ---- Select mode switching ----
+
+  document.querySelectorAll('input[name="select-mode"]').forEach(radio => {
+    radio.addEventListener("change", () => {
+      selectMode = radio.value;
     });
   });
 
@@ -141,7 +160,9 @@
       body: JSON.stringify({ text }),
     });
     const data = await res.json();
-    sortOrder = data.map(e => ({ id: e.id, score: e.similarity }));
+    sortOrder = data.results.map(e => ({ id: e.id, score: e.similarity }));
+    threshold = data.threshold;
+    sortStatus.textContent = `Threshold: ${(threshold * 100).toFixed(1)}%`;
     renderClipList();
   }
 
@@ -168,15 +189,60 @@
     });
     if (!res.ok) {
       sortOrder = null;
+      threshold = null;
       sortStatus.textContent = "Vote good & bad first";
       renderClipList();
       return;
     }
     const data = await res.json();
-    sortOrder = data;  // already [{id, score}, ...]
-    sortStatus.textContent = "";
+    sortOrder = data.results;  // [{id, score}, ...]
+    threshold = data.threshold;
+    sortStatus.textContent = `Threshold: ${(threshold * 100).toFixed(1)}%`;
     renderClipList();
   }
+
+  // ---- Next Clip Selection ----
+
+  nextClipBtn.addEventListener("click", () => {
+    if (!sortOrder || sortOrder.length === 0) {
+      sortStatus.textContent = "Sort clips first";
+      return;
+    }
+
+    // Get unlabeled clips (not voted on)
+    const unlabeled = sortOrder.filter(item => {
+      return !votes.good.includes(item.id) && !votes.bad.includes(item.id);
+    });
+
+    if (unlabeled.length === 0) {
+      sortStatus.textContent = "All clips labeled";
+      return;
+    }
+
+    let nextClip;
+    if (selectMode === "good") {
+      // Select highest scoring unlabeled clip
+      nextClip = unlabeled[0];
+    } else {
+      // Select clip closest to threshold
+      if (threshold === null) {
+        sortStatus.textContent = "No threshold available";
+        return;
+      }
+      let minDist = Infinity;
+      for (const item of unlabeled) {
+        const dist = Math.abs(item.score - threshold);
+        if (dist < minDist) {
+          minDist = dist;
+          nextClip = item;
+        }
+      }
+    }
+
+    if (nextClip) {
+      selectClip(nextClip.id);
+    }
+  });
 
   // ---- Rendering ----
 

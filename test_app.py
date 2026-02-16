@@ -316,31 +316,32 @@ class TestSortClips:
         resp = client.post("/api/sort", json={"text": "high pitched beep"})
         assert resp.status_code == 200
         data = resp.get_json()
-        assert len(data) == app_module.NUM_CLIPS
+        assert len(data["results"]) == app_module.NUM_CLIPS
+        assert "threshold" in data
 
     def test_result_contains_id_and_similarity(self, client):
         resp = client.post("/api/sort", json={"text": "low tone"})
         data = resp.get_json()
-        for entry in data:
+        for entry in data["results"]:
             assert "id" in entry
             assert "similarity" in entry
 
     def test_sorted_by_descending_similarity(self, client):
         resp = client.post("/api/sort", json={"text": "a beeping sound"})
         data = resp.get_json()
-        similarities = [e["similarity"] for e in data]
+        similarities = [e["similarity"] for e in data["results"]]
         assert similarities == sorted(similarities, reverse=True)
 
     def test_all_clip_ids_present(self, client):
         resp = client.post("/api/sort", json={"text": "sine wave"})
         data = resp.get_json()
-        ids = {e["id"] for e in data}
+        ids = {e["id"] for e in data["results"]}
         assert ids == set(range(1, app_module.NUM_CLIPS + 1))
 
     def test_similarity_values_in_range(self, client):
         resp = client.post("/api/sort", json={"text": "high pitch"})
         data = resp.get_json()
-        for entry in data:
+        for entry in data["results"]:
             assert -1.0 <= entry["similarity"] <= 1.0
 
     def test_empty_text_returns_400(self, client):
@@ -364,8 +365,9 @@ class TestTrainAndScore:
     def test_returns_list_of_scored_clips(self):
         app_module.good_votes.update({1, 2})
         app_module.bad_votes.update({3, 4})
-        results = app_module.train_and_score()
+        results, threshold = app_module.train_and_score()
         assert len(results) == app_module.NUM_CLIPS
+        assert isinstance(threshold, float)
         for entry in results:
             assert "id" in entry
             assert "score" in entry
@@ -373,21 +375,21 @@ class TestTrainAndScore:
     def test_scores_between_zero_and_one(self):
         app_module.good_votes.update({1, 2})
         app_module.bad_votes.update({3, 4})
-        results = app_module.train_and_score()
+        results, threshold = app_module.train_and_score()
         for entry in results:
             assert 0.0 <= entry["score"] <= 1.0
 
     def test_results_sorted_descending(self):
         app_module.good_votes.update({1, 2})
         app_module.bad_votes.update({3, 4})
-        results = app_module.train_and_score()
+        results, threshold = app_module.train_and_score()
         scores = [e["score"] for e in results]
         assert scores == sorted(scores, reverse=True)
 
     def test_good_clips_scored_higher_than_bad(self):
         app_module.good_votes.update({1, 2, 3})
         app_module.bad_votes.update({18, 19, 20})
-        results = app_module.train_and_score()
+        results, threshold = app_module.train_and_score()
         score_map = {e["id"]: e["score"] for e in results}
         avg_good = np.mean([score_map[i] for i in app_module.good_votes])
         avg_bad = np.mean([score_map[i] for i in app_module.bad_votes])
@@ -405,14 +407,15 @@ class TestLearnedSort:
         resp = client.post("/api/learned-sort")
         assert resp.status_code == 200
         data = resp.get_json()
-        assert len(data) == app_module.NUM_CLIPS
+        assert len(data["results"]) == app_module.NUM_CLIPS
+        assert "threshold" in data
 
     def test_result_fields(self, client):
         app_module.good_votes.update({1, 2})
         app_module.bad_votes.update({3, 4})
         resp = client.post("/api/learned-sort")
         data = resp.get_json()
-        for entry in data:
+        for entry in data["results"]:
             assert "id" in entry
             assert "score" in entry
 
@@ -421,7 +424,7 @@ class TestLearnedSort:
         app_module.bad_votes.update({3, 4})
         resp = client.post("/api/learned-sort")
         data = resp.get_json()
-        scores = [e["score"] for e in data]
+        scores = [e["score"] for e in data["results"]]
         assert scores == sorted(scores, reverse=True)
 
     def test_all_clip_ids_present(self, client):
@@ -429,7 +432,7 @@ class TestLearnedSort:
         app_module.bad_votes.update({3, 4})
         resp = client.post("/api/learned-sort")
         data = resp.get_json()
-        ids = {e["id"] for e in data}
+        ids = {e["id"] for e in data["results"]}
         assert ids == set(range(1, app_module.NUM_CLIPS + 1))
 
     def test_no_votes_returns_400(self, client):
@@ -451,5 +454,5 @@ class TestLearnedSort:
         app_module.bad_votes.update({3, 4})
         resp = client.post("/api/learned-sort")
         data = resp.get_json()
-        for entry in data:
+        for entry in data["results"]:
             assert 0.0 <= entry["score"] <= 1.0
