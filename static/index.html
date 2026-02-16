@@ -571,98 +571,112 @@
   // ---- Burger Menu ----
 
   // Toggle burger menu
-  burgerBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    burgerDropdown.classList.toggle("show");
-  });
+  if (burgerBtn && burgerDropdown) {
+    burgerBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      burgerDropdown.classList.toggle("show");
+    });
 
-  // Close burger menu when clicking outside
-  document.addEventListener("click", (e) => {
-    if (!burgerDropdown.contains(e.target) && !burgerBtn.contains(e.target)) {
-      burgerDropdown.classList.remove("show");
-    }
-  });
+    // Close burger menu when clicking outside
+    document.addEventListener("click", (e) => {
+      if (!burgerDropdown.contains(e.target) && !burgerBtn.contains(e.target)) {
+        burgerDropdown.classList.remove("show");
+      }
+    });
+  }
 
   // Dataset export
-  menuDatasetExport.addEventListener("click", () => {
-    window.location.href = "/api/dataset/export";
-    burgerDropdown.classList.remove("show");
-  });
+  if (menuDatasetExport && burgerDropdown) {
+    menuDatasetExport.addEventListener("click", () => {
+      window.location.href = "/api/dataset/export";
+      burgerDropdown.classList.remove("show");
+    });
+  }
 
   // Dataset change
-  menuDatasetChange.addEventListener("click", () => {
-    if (confirm("Clear current dataset and load a new one?")) {
-      fetch("/api/dataset/clear", { method: "POST" })
-        .then(() => {
-          showWelcomeScreen();
-          clips = [];
-          votes = { good: [], bad: [] };
-          selected = null;
-          datasetLoaded = false;
-        });
-    }
-    burgerDropdown.classList.remove("show");
-  });
+  if (menuDatasetChange && burgerDropdown) {
+    menuDatasetChange.addEventListener("click", () => {
+      if (confirm("Clear current dataset and load a new one?")) {
+        fetch("/api/dataset/clear", { method: "POST" })
+          .then(() => {
+            showWelcomeScreen();
+            clips = [];
+            votes = { good: [], bad: [] };
+            selected = null;
+            datasetLoaded = false;
+          });
+      }
+      burgerDropdown.classList.remove("show");
+    });
+  }
 
   // Labels export
-  menuLabelsExport.addEventListener("click", async () => {
-    menuLabelsStatus.textContent = "";
-    const res = await fetch("/api/labels/export");
-    const data = await res.json();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "labels.json";
-    a.click();
-    URL.revokeObjectURL(url);
-    menuLabelsStatus.textContent = `Exported ${data.labels.length} labels`;
-    setTimeout(() => { menuLabelsStatus.textContent = ""; }, 3000);
-    burgerDropdown.classList.remove("show");
-  });
+  if (menuLabelsExport && menuLabelsStatus && burgerDropdown) {
+    menuLabelsExport.addEventListener("click", async () => {
+      menuLabelsStatus.textContent = "";
+      const res = await fetch("/api/labels/export");
+      const data = await res.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "labels.json";
+      a.click();
+      URL.revokeObjectURL(url);
+      menuLabelsStatus.textContent = `Exported ${data.labels.length} labels`;
+      setTimeout(() => { menuLabelsStatus.textContent = ""; }, 3000);
+      burgerDropdown.classList.remove("show");
+    });
+  }
 
   // Labels import
-  menuLabelsImport.addEventListener("click", () => {
-    importFile.click();
-    burgerDropdown.classList.remove("show");
-  });
+  if (menuLabelsImport && importFile && burgerDropdown) {
+    menuLabelsImport.addEventListener("click", () => {
+      importFile.click();
+      burgerDropdown.classList.remove("show");
+    });
+  }
 
   // Detector import
-  menuDetectorImport.addEventListener("click", () => {
-    loadDetectorFile.click();
-    burgerDropdown.classList.remove("show");
-  });
+  if (menuDetectorImport && loadDetectorFile && burgerDropdown) {
+    menuDetectorImport.addEventListener("click", () => {
+      loadDetectorFile.click();
+      burgerDropdown.classList.remove("show");
+    });
+  }
 
   // Detector export
-  menuDetectorExport.addEventListener("click", async () => {
-    menuDetectorStatus.textContent = "";
-    if (votes.good.length === 0 || votes.bad.length === 0) {
-      menuDetectorStatus.textContent = "Vote good & bad clips first";
+  if (menuDetectorExport && menuDetectorStatus && burgerDropdown) {
+    menuDetectorExport.addEventListener("click", async () => {
+      menuDetectorStatus.textContent = "";
+      if (votes.good.length === 0 || votes.bad.length === 0) {
+        menuDetectorStatus.textContent = "Vote good & bad clips first";
+        setTimeout(() => { menuDetectorStatus.textContent = ""; }, 3000);
+        return;
+      }
+      menuDetectorStatus.textContent = "Exporting detector\u2026";
+      const res = await fetch("/api/detector/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        menuDetectorStatus.textContent = "Export failed";
+        setTimeout(() => { menuDetectorStatus.textContent = ""; }, 3000);
+        return;
+      }
+      const data = await res.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "detector.json";
+      a.click();
+      URL.revokeObjectURL(url);
+      menuDetectorStatus.textContent = "Detector exported";
       setTimeout(() => { menuDetectorStatus.textContent = ""; }, 3000);
-      return;
-    }
-    menuDetectorStatus.textContent = "Exporting detector\u2026";
-    const res = await fetch("/api/detector/export", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      burgerDropdown.classList.remove("show");
     });
-    if (!res.ok) {
-      menuDetectorStatus.textContent = "Export failed";
-      setTimeout(() => { menuDetectorStatus.textContent = ""; }, 3000);
-      return;
-    }
-    const data = await res.json();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "detector.json";
-    a.click();
-    URL.revokeObjectURL(url);
-    menuDetectorStatus.textContent = "Detector exported";
-    setTimeout(() => { menuDetectorStatus.textContent = ""; }, 3000);
-    burgerDropdown.classList.remove("show");
-  });
+  }
 
   // ---- Sort mode switching ----
 
