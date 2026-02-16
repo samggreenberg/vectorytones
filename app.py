@@ -2,15 +2,15 @@ import hashlib
 import io
 import math
 import struct
+from typing import Optional
 import wave
 
+import laion_clap
 import numpy as np
 import torch
 import torch.nn as nn
-import laion_clap
-from sklearn.mixture import GaussianMixture
-
 from flask import Flask, jsonify, request, send_file
+from sklearn.mixture import GaussianMixture
 
 app = Flask(__name__)
 
@@ -26,8 +26,7 @@ good_votes: set[int] = set()
 bad_votes: set[int] = set()
 
 # Load CLAP model for audio/text embeddings
-clap_model = laion_clap.CLAP_Module(enable_fusion=False)
-clap_model.load_ckpt()  # downloads default pretrained checkpoint
+clap_model: Optional[laion_clap.CLAP_Module] = None
 
 
 def generate_wav(frequency: float, duration: float) -> bytes:
@@ -83,13 +82,29 @@ def init_clips():
     for idx, arr in enumerate(audio_arrays):
         padded[idx, : len(arr)] = arr
 
-    embeddings = clap_model.get_audio_embedding_from_data(padded)
+    if clap_model is None:
+        raise RuntimeError("CLAP model not loaded")
+    else:
+        embeddings = clap_model.get_audio_embedding_from_data(padded)
 
     for i in range(1, NUM_CLIPS + 1):
         clips[i]["embedding"] = embeddings[i - 1]
 
 
-init_clips()
+def initialize_app():
+    global clap_model
+    if clap_model is None:
+        clap_model = laion_clap.CLAP_Module(enable_fusion=False)
+        clap_model.load_ckpt()  # downloads default pretrained checkpoint
+
+    if not clips:
+        init_clips()
+
+
+@app.before_request
+def ensure_initialized():
+    initialize_app()
+
 
 # ---------------------------------------------------------------------------
 # Routes
@@ -166,12 +181,12 @@ def calculate_gmm_threshold(scores):
 
     try:
         # Fit a 2-component GMM
-        gmm = GaussianMixture(n_components=2, random_state=42)
+        gmm: GaussianMixture = GaussianMixture(n_components=2, random_state=42)
         gmm.fit(X)
 
         # Get the means of the two components
         means = gmm.means_.flatten()
-        stds = np.sqrt(gmm.covariances_.flatten())
+        # stds = np.sqrt(gmm.covariances_.flatten())
 
         # Identify which component is "low" (Bad) and which is "high" (Good)
         low_idx = 0 if means[0] < means[1] else 1
