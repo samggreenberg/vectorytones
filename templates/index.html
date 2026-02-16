@@ -126,9 +126,27 @@
       <div id="text-sort-wrap">
         <input type="text" id="text-sort" placeholder='e.g. "high pitched beep"'>
       </div>
+      <div id="learned-sort-wrap" style="display:none">
+        <div style="font-size:0.8rem; color:#aaa; padding:6px 0;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+            <span>Good examples:</span>
+            <span id="learned-good-count" style="color:#4caf50;">0</span>
+          </div>
+          <div style="display:flex; justify-content:space-between;">
+            <span>Bad examples:</span>
+            <span id="learned-bad-count" style="color:#f44336;">0</span>
+          </div>
+        </div>
+      </div>
       <div id="load-sort-wrap" style="display:none">
-        <button id="load-detector-btn" style="width:100%; padding:6px; background:#7c8aff; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:0.85rem;">Load Detector</button>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <button id="load-detector-btn" style="width:100%; padding:6px; background:#1a1d27; color:#aaa; border:1px solid #2a2d3a; border-radius:4px; cursor:pointer; font-size:0.8rem;">Detector File</button>
+          <button id="load-example-btn" style="width:100%; padding:6px; background:#1a1d27; color:#aaa; border:1px solid #2a2d3a; border-radius:4px; cursor:pointer; font-size:0.8rem;">Example Clip</button>
+          <button id="load-labels-btn" style="width:100%; padding:6px; background:#1a1d27; color:#aaa; border:1px solid #2a2d3a; border-radius:4px; cursor:pointer; font-size:0.8rem;">Label File</button>
+        </div>
         <input type="file" id="load-detector-file" accept=".json" style="display:none">
+        <input type="file" id="load-example-file" accept=".wav,.mp3,.flac,.ogg,.m4a" style="display:none">
+        <input type="file" id="load-labels-file" accept=".json" style="display:none">
       </div>
       <span class="sort-label" style="margin-top:8px">Select</span>
       <div class="sort-mode">
@@ -192,11 +210,17 @@
     </div>
     <div id="detector-io-status" class="label-io-status"></div>
     <div class="vote-section">
-      <h3 class="good">Good</h3>
+      <h3 class="good" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>Good</span>
+        <span id="good-count" style="font-size:0.75rem; opacity:0.7;">0</span>
+      </h3>
       <div id="good-list"></div>
     </div>
     <div class="vote-section">
-      <h3 class="bad">Bad</h3>
+      <h3 class="bad" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>Bad</span>
+        <span id="bad-count" style="font-size:0.75rem; opacity:0.7;">0</span>
+      </h3>
       <div id="bad-list"></div>
     </div>
   </div>
@@ -222,15 +246,24 @@
   const badList = document.getElementById("bad-list");
   const textSortInput = document.getElementById("text-sort");
   const textSortWrap = document.getElementById("text-sort-wrap");
+  const learnedSortWrap = document.getElementById("learned-sort-wrap");
   const loadSortWrap = document.getElementById("load-sort-wrap");
   const loadDetectorBtn = document.getElementById("load-detector-btn");
   const loadDetectorFile = document.getElementById("load-detector-file");
+  const loadExampleBtn = document.getElementById("load-example-btn");
+  const loadExampleFile = document.getElementById("load-example-file");
+  const loadLabelsBtn = document.getElementById("load-labels-btn");
+  const loadLabelsFile = document.getElementById("load-labels-file");
   const learnedRadio = document.getElementById("learned-radio");
   const loadRadio = document.getElementById("load-radio");
   const sortStatus = document.getElementById("sort-status");
   const nextClipBtn = document.getElementById("next-clip-btn");
   const stripeOverview = document.getElementById("stripe-overview");
   const stripeContainer = document.getElementById("stripe-container");
+  const learnedGoodCount = document.getElementById("learned-good-count");
+  const learnedBadCount = document.getElementById("learned-bad-count");
+  const goodCountHeader = document.getElementById("good-count");
+  const badCountHeader = document.getElementById("bad-count");
 
   // Dataset management elements
   const datasetWelcome = document.getElementById("dataset-welcome");
@@ -487,10 +520,10 @@
     learnedRadio.parentElement.style.opacity = hasGoodAndBad ? "1" : "0.5";
     learnedRadio.parentElement.style.cursor = hasGoodAndBad ? "pointer" : "not-allowed";
 
-    const hasLoadedDetector = loadedDetector !== null;
-    loadRadio.disabled = !hasLoadedDetector;
-    loadRadio.parentElement.style.opacity = hasLoadedDetector ? "1" : "0.5";
-    loadRadio.parentElement.style.cursor = hasLoadedDetector ? "pointer" : "not-allowed";
+    // Load mode is always available now (has 3 options: detector, example, labels)
+    loadRadio.disabled = false;
+    loadRadio.parentElement.style.opacity = "1";
+    loadRadio.parentElement.style.cursor = "pointer";
   }
 
   document.querySelectorAll('input[name="sort-mode"]').forEach(radio => {
@@ -502,24 +535,27 @@
         document.querySelector('input[name="sort-mode"][value="text"]').checked = true;
         return;
       }
-      if (radio.value === "load" && loadedDetector === null) {
-        sortStatus.textContent = "Load a detector first";
-        // Revert to text mode
-        document.querySelector('input[name="sort-mode"][value="text"]').checked = true;
-        return;
-      }
 
       sortMode = radio.value;
       textSortWrap.style.display = sortMode === "text" ? "" : "none";
+      learnedSortWrap.style.display = sortMode === "learned" ? "" : "none";
       loadSortWrap.style.display = sortMode === "load" ? "" : "none";
       sortStatus.textContent = "";
+
+      // Update learned stats when switching to learned mode
+      if (sortMode === "learned") {
+        updateLearnedStats();
+      }
 
       if (sortMode === "text") {
         onTextSortInput();
       } else if (sortMode === "learned") {
         fetchLearnedSort();
       } else if (sortMode === "load") {
-        fetchLoadedSort();
+        // Don't auto-sort in load mode, wait for user to load something
+        sortOrder = null;
+        threshold = null;
+        renderClipList();
       }
     });
   });
@@ -609,7 +645,7 @@
     renderClipList();
   }
 
-  // ---- Load detector file ----
+  // ---- Load mode buttons ----
 
   loadDetectorBtn.addEventListener("click", () => {
     loadDetectorFile.click();
@@ -622,13 +658,14 @@
     const text = await file.text();
     try {
       loadedDetector = JSON.parse(text);
-      sortStatus.textContent = "Detector loaded";
+      sortStatus.textContent = "Detector loaded, scoring clips\u2026";
       updateSortModeAvailability();
       // Auto-switch to load mode
       document.querySelector('input[name="sort-mode"][value="load"]').checked = true;
       sortMode = "load";
       loadSortWrap.style.display = "";
       textSortWrap.style.display = "none";
+      learnedSortWrap.style.display = "none";
       fetchLoadedSort();
     } catch (e) {
       sortStatus.textContent = "Invalid detector file";
@@ -636,6 +673,78 @@
       updateSortModeAvailability();
     }
     loadDetectorFile.value = "";
+  });
+
+  loadExampleBtn.addEventListener("click", () => {
+    loadExampleFile.click();
+  });
+
+  loadExampleFile.addEventListener("change", async () => {
+    const file = loadExampleFile.files[0];
+    if (!file) return;
+    sortStatus.textContent = "Loading example clip\u2026";
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/example-sort", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        sortStatus.textContent = `Error: ${error.error}`;
+        return;
+      }
+
+      const data = await res.json();
+      sortOrder = data.results.map(e => ({ id: e.id, score: e.similarity }));
+      threshold = data.threshold;
+      sortStatus.textContent = `Threshold: ${(threshold * 100).toFixed(1)}%`;
+      renderClipList();
+    } catch (e) {
+      sortStatus.textContent = `Error: ${e.message}`;
+    }
+
+    loadExampleFile.value = "";
+  });
+
+  loadLabelsBtn.addEventListener("click", () => {
+    loadLabelsFile.click();
+  });
+
+  loadLabelsFile.addEventListener("change", async () => {
+    const file = loadLabelsFile.files[0];
+    if (!file) return;
+    sortStatus.textContent = "Loading label file\u2026";
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/label-file-sort", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        sortStatus.textContent = `Error: ${error.error}`;
+        return;
+      }
+
+      const data = await res.json();
+      sortOrder = data.results;  // [{id, score}, ...]
+      threshold = data.threshold;
+      sortStatus.textContent = `Trained on ${data.loaded} clips (${data.skipped} skipped). Threshold: ${(threshold * 100).toFixed(1)}%`;
+      renderClipList();
+    } catch (e) {
+      sortStatus.textContent = `Error: ${e.message}`;
+    }
+
+    loadLabelsFile.value = "";
   });
 
   // ---- Next Clip Selection ----
@@ -820,6 +929,20 @@
       div.onclick = () => selectClip(id);
       badList.appendChild(div);
     });
+
+    // Update counts
+    updateVoteCounts();
+    updateLearnedStats();
+  }
+
+  function updateVoteCounts() {
+    goodCountHeader.textContent = votes.good.length;
+    badCountHeader.textContent = votes.bad.length;
+  }
+
+  function updateLearnedStats() {
+    learnedGoodCount.textContent = votes.good.length;
+    learnedBadCount.textContent = votes.bad.length;
   }
 
   function renderStripe() {
