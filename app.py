@@ -1111,6 +1111,183 @@ def detector_sort():
     return jsonify({"results": results, "threshold": round(threshold, 4)})
 
 
+@app.route("/api/example-sort", methods=["POST"])
+def example_sort():
+    """Sort clips by similarity to an uploaded example audio file."""
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files["file"]
+    if not file.filename:
+        return jsonify({"error": "No file selected"}), 400
+
+    if clap_model is None or clap_processor is None:
+        return jsonify({"error": "CLAP model not loaded"}), 500
+
+    try:
+        # Save uploaded file to temp location
+        temp_path = DATA_DIR / "temp_example.wav"
+        DATA_DIR.mkdir(exist_ok=True)
+        file.save(temp_path)
+
+        # Embed the example audio file
+        example_embedding = embed_audio_file(temp_path)
+
+        # Clean up temp file
+        temp_path.unlink()
+
+        if example_embedding is None:
+            return jsonify({"error": "Failed to embed audio file"}), 500
+
+        # Calculate cosine similarity with all clips
+        results = []
+        scores = []
+        for clip_id, clip in clips.items():
+            audio_vec = clip["embedding"]
+            norm_product = np.linalg.norm(audio_vec) * np.linalg.norm(example_embedding)
+            if norm_product == 0:
+                similarity = 0.0
+            else:
+                similarity = float(
+                    np.dot(audio_vec, example_embedding) / norm_product
+                )
+            results.append({"id": clip_id, "similarity": round(similarity, 4)})
+            scores.append(similarity)
+
+        # Calculate GMM-based threshold
+        threshold = calculate_gmm_threshold(scores)
+
+        results.sort(key=lambda x: x["similarity"], reverse=True)
+        return jsonify({"results": results, "threshold": round(threshold, 4)})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/label-file-sort", methods=["POST"])
+def label_file_sort():
+    """Train MLP on external audio files from a label file, then sort all clips."""
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files["file"]
+    if not file.filename:
+        return jsonify({"error": "No file selected"}), 400
+
+    if clap_model is None or clap_processor is None:
+        return jsonify({"error": "CLAP model not loaded"}), 500
+
+    try:
+        # Parse the label file
+        text = file.read().decode("utf-8")
+        label_data = None
+        try:
+            label_data = eval(text) if text.strip().startswith("{") else None
+            if label_data is None:
+                import json
+
+                label_data = json.loads(text)
+        except Exception:
+            return jsonify({"error": "Invalid label file format"}), 400
+
+        # Extract labels list
+        labels = label_data.get("labels", [])
+        if not labels:
+            return jsonify({"error": "No labels found in file"}), 400
+
+        # Load and embed each labeled audio file
+        X_list = []
+        y_list = []
+        loaded_count = 0
+        skipped_count = 0
+
+        for entry in labels:
+            label = entry.get("label")
+            if label not in ("good", "bad"):
+                skipped_count += 1
+                continue
+
+            # Try to get audio file path
+            audio_path = entry.get("path") or entry.get("file") or entry.get("filename")
+            if not audio_path:
+                skipped_count += 1
+                continue
+
+            audio_path = Path(audio_path)
+            if not audio_path.exists():
+                skipped_count += 1
+                continue
+
+            # Embed the audio file
+            embedding = embed_audio_file(audio_path)
+            if embedding is None:
+                skipped_count += 1
+                continue
+
+            X_list.append(embedding)
+            y_list.append(1.0 if label == "good" else 0.0)
+            loaded_count += 1
+
+        if loaded_count < 2:
+            return (
+                jsonify(
+                    {
+                        "error": f"Need at least 2 valid labeled files (loaded {loaded_count}, skipped {skipped_count})"
+                    }
+                ),
+                400,
+            )
+
+        # Check if we have both good and bad examples
+        num_good = sum(1 for y in y_list if y == 1.0)
+        num_bad = len(y_list) - num_good
+        if num_good == 0 or num_bad == 0:
+            return (
+                jsonify(
+                    {"error": "Need at least one good and one bad labeled example"}
+                ),
+                400,
+            )
+
+        # Train MLP using the same approach as learned sort
+        X = torch.tensor(np.array(X_list), dtype=torch.float32)
+        y = torch.tensor(y_list, dtype=torch.float32).unsqueeze(1)
+
+        input_dim = X.shape[1]
+
+        # Calculate threshold using cross-calibration
+        threshold = calculate_cross_calibration_threshold(
+            X_list, y_list, input_dim, inclusion
+        )
+
+        # Train final model on all data
+        model = train_model(X, y, input_dim, inclusion)
+
+        # Score every clip in the dataset
+        all_ids = sorted(clips.keys())
+        all_embs = np.array([clips[cid]["embedding"] for cid in all_ids])
+        X_all = torch.tensor(all_embs, dtype=torch.float32)
+        with torch.no_grad():
+            scores = model(X_all).squeeze(1).tolist()
+
+        results = [
+            {"id": cid, "score": round(s, 4)} for cid, s in zip(all_ids, scores)
+        ]
+        results.sort(key=lambda x: x["score"], reverse=True)
+
+        return jsonify(
+            {
+                "results": results,
+                "threshold": round(threshold, 4),
+                "loaded": loaded_count,
+                "skipped": skipped_count,
+            }
+        )
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # ---------------------------------------------------------------------------
 # Dataset management routes
 # ---------------------------------------------------------------------------
