@@ -7,6 +7,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import laion_clap
+from sklearn.mixture import GaussianMixture
 
 from flask import Flask, jsonify, request, send_file
 
@@ -150,6 +151,40 @@ def vote_clip(clip_id):
     return jsonify({"ok": True})
 
 
+def calculate_gmm_threshold(scores):
+    """
+    Use Gaussian Mixture Model to find threshold between two distributions.
+    Assumes scores come from a bimodal distribution (Bad + Good).
+    """
+    if len(scores) < 2:
+        return 0.5
+
+    # Reshape for sklearn
+    X = np.array(scores).reshape(-1, 1)
+
+    try:
+        # Fit a 2-component GMM
+        gmm = GaussianMixture(n_components=2, random_state=42)
+        gmm.fit(X)
+
+        # Get the means of the two components
+        means = gmm.means_.flatten()
+        stds = np.sqrt(gmm.covariances_.flatten())
+
+        # Identify which component is "low" (Bad) and which is "high" (Good)
+        low_idx = 0 if means[0] < means[1] else 1
+        high_idx = 1 - low_idx
+
+        # Threshold is at the intersection of the two Gaussians
+        # For simplicity, use the midpoint between means
+        threshold = (means[low_idx] + means[high_idx]) / 2.0
+
+        return float(threshold)
+    except Exception:
+        # If GMM fails, return median
+        return float(np.median(scores))
+
+
 @app.route("/api/sort", methods=["POST"])
 def sort_clips():
     """Return clips sorted by cosine similarity to a text query."""
@@ -162,6 +197,7 @@ def sort_clips():
     text_vec = text_embedding[0]
 
     results = []
+    scores = []
     for clip_id, clip in clips.items():
         audio_vec = clip["embedding"]
         norm_product = np.linalg.norm(audio_vec) * np.linalg.norm(text_vec)
@@ -170,9 +206,104 @@ def sort_clips():
         else:
             similarity = float(np.dot(audio_vec, text_vec) / norm_product)
         results.append({"id": clip_id, "similarity": round(similarity, 4)})
+        scores.append(similarity)
+
+    # Calculate GMM-based threshold
+    threshold = calculate_gmm_threshold(scores)
 
     results.sort(key=lambda x: x["similarity"], reverse=True)
-    return jsonify(results)
+    return jsonify({"results": results, "threshold": round(threshold, 4)})
+
+
+def train_model(X_train, y_train, input_dim):
+    """Train a small MLP and return the trained model."""
+    model = nn.Sequential(
+        nn.Linear(input_dim, 64),
+        nn.ReLU(),
+        nn.Linear(64, 1),
+        nn.Sigmoid(),
+    )
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    loss_fn = nn.BCELoss()
+
+    model.train()
+    for _ in range(200):
+        optimizer.zero_grad()
+        loss = loss_fn(model(X_train), y_train)
+        loss.backward()
+        optimizer.step()
+
+    model.eval()
+    return model
+
+
+def find_optimal_threshold(scores, labels):
+    """Find the best threshold that separates good (1) from bad (0)."""
+    sorted_pairs = sorted(zip(scores, labels), reverse=True)
+    best_threshold = 0.5
+    best_accuracy = 0.0
+
+    for i in range(len(sorted_pairs)):
+        threshold = sorted_pairs[i][0]
+        # Count correct predictions with this threshold
+        correct = 0
+        for score, label in sorted_pairs:
+            predicted = 1 if score >= threshold else 0
+            if predicted == label:
+                correct += 1
+        accuracy = correct / len(sorted_pairs)
+        if accuracy > best_accuracy:
+            best_accuracy = accuracy
+            best_threshold = threshold
+
+    return best_threshold
+
+
+def calculate_cross_calibration_threshold(X_list, y_list, input_dim):
+    """
+    Calculate threshold using cross-calibration:
+    - Split data into two halves D1 and D2
+    - Train M1 on D1, find threshold t1 using M1 on D2
+    - Train M2 on D2, find threshold t2 using M2 on D1
+    - Return mean(t1, t2)
+    """
+    n = len(X_list)
+    if n < 4:
+        # Not enough data for cross-calibration
+        return 0.5
+
+    # Split data in half
+    mid = n // 2
+    indices = np.random.permutation(n)
+    idx1 = indices[:mid]
+    idx2 = indices[mid:]
+
+    X_np = np.array(X_list)
+    y_np = np.array(y_list)
+
+    # Train M1 on D1
+    X1 = torch.tensor(X_np[idx1], dtype=torch.float32)
+    y1 = torch.tensor(y_np[idx1], dtype=torch.float32).unsqueeze(1)
+    M1 = train_model(X1, y1, input_dim)
+
+    # Train M2 on D2
+    X2 = torch.tensor(X_np[idx2], dtype=torch.float32)
+    y2 = torch.tensor(y_np[idx2], dtype=torch.float32).unsqueeze(1)
+    M2 = train_model(X2, y2, input_dim)
+
+    # Find t1: use M1 on D2
+    with torch.no_grad():
+        scores1_on_2 = M1(X2).squeeze(1).tolist()
+    t1 = find_optimal_threshold(scores1_on_2, y_np[idx2].tolist())
+
+    # Find t2: use M2 on D1
+    with torch.no_grad():
+        scores2_on_1 = M2(X1).squeeze(1).tolist()
+    t2 = find_optimal_threshold(scores2_on_1, y_np[idx1].tolist())
+
+    # Return mean
+    return (t1 + t2) / 2.0
 
 
 def train_and_score():
@@ -190,25 +321,14 @@ def train_and_score():
     y = torch.tensor(y_list, dtype=torch.float32).unsqueeze(1)
 
     input_dim = X.shape[1]
-    model = nn.Sequential(
-        nn.Linear(input_dim, 64),
-        nn.ReLU(),
-        nn.Linear(64, 1),
-        nn.Sigmoid(),
-    )
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-    loss_fn = nn.BCELoss()
+    # Calculate threshold using cross-calibration
+    threshold = calculate_cross_calibration_threshold(X_list, y_list, input_dim)
 
-    model.train()
-    for _ in range(200):
-        optimizer.zero_grad()
-        loss = loss_fn(model(X), y)
-        loss.backward()
-        optimizer.step()
+    # Train final model on all data
+    model = train_model(X, y, input_dim)
 
     # Score every clip
-    model.eval()
     all_ids = sorted(clips.keys())
     all_embs = np.array([clips[cid]["embedding"] for cid in all_ids])
     X_all = torch.tensor(all_embs, dtype=torch.float32)
@@ -217,7 +337,7 @@ def train_and_score():
 
     results = [{"id": cid, "score": round(s, 4)} for cid, s in zip(all_ids, scores)]
     results.sort(key=lambda x: x["score"], reverse=True)
-    return results
+    return results, threshold
 
 
 @app.route("/api/learned-sort", methods=["POST"])
@@ -225,8 +345,8 @@ def learned_sort():
     """Train MLP on voted clips, return all clips sorted by predicted score."""
     if not good_votes or not bad_votes:
         return jsonify({"error": "need at least one good and one bad vote"}), 400
-    results = train_and_score()
-    return jsonify(results)
+    results, threshold = train_and_score()
+    return jsonify({"results": results, "threshold": round(threshold, 4)})
 
 
 @app.route("/api/votes")
