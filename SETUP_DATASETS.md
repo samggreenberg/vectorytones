@@ -25,6 +25,7 @@ python setup_datasets.py
 ```
 
 This will:
+
 1. Download ESC-50 dataset (~600 MB) from GitHub
 2. Extract 2,000 audio clips (50 categories, 40 clips each)
 3. Load the pretrained LAION-CLAP model
@@ -56,6 +57,7 @@ data/
 ## Dataset Format
 
 Each `.pkl` file contains:
+
 ```python
 {
     'name': 'dataset_name',
@@ -113,6 +115,7 @@ curl http://localhost:5000/api/clips/1
 ## Dataset Statistics
 
 After setup, you'll have approximately:
+
 - **animals**: 40-60 clips
 - **natural**: 40-60 clips
 - **urban**: 60-80 clips
@@ -137,4 +140,3 @@ LAION-CLAP model: MIT License
 
 - [ESC-50 Dataset](https://github.com/karolpiczak/ESC-50)
 - [LAION-CLAP](https://github.com/LAION-AI/CLAP)
-- [PyPI: laion-clap](https://pypi.org/project/laion-clap/)
