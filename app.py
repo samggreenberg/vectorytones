@@ -353,7 +353,7 @@ def initialize_app():
         print("DEBUG: Loading X-CLIP model for Videos (Hugging Face)...", flush=True)
         model_id = "microsoft/xclip-base-patch32"
         xclip_model = XCLIPModel.from_pretrained(model_id, low_cpu_mem_usage=True)
-        xclip_processor = XCLIPProcessor.from_pretrained(model_id)
+        xclip_processor = XCLIPProcessor.from_pretrained(model_id, use_fast=False)
         print("DEBUG: X-CLIP model loaded.", flush=True)
 
     # Load CLIP model for Images modality
@@ -361,7 +361,7 @@ def initialize_app():
         print("DEBUG: Loading CLIP model for Images (Hugging Face)...", flush=True)
         model_id = "openai/clip-vit-base-patch32"
         clip_model = CLIPModel.from_pretrained(model_id, low_cpu_mem_usage=True)
-        clip_processor = CLIPProcessor.from_pretrained(model_id)
+        clip_processor = CLIPProcessor.from_pretrained(model_id, use_fast=False)
         print("DEBUG: CLIP model loaded.", flush=True)
 
     # Load E5-LARGE-V2 model for Paragraphs modality
@@ -981,9 +981,7 @@ def load_image_metadata_from_folders(image_dir: Path, categories: list[str]) -> 
     return metadata
 
 
-def load_paragraph_metadata_from_folders(
-    text_dir: Path, categories: list[str]
-) -> dict:
+def load_paragraph_metadata_from_folders(text_dir: Path, categories: list[str]) -> dict:
     """Load paragraph/text file metadata from category folders."""
     metadata = {}
 
@@ -1092,9 +1090,7 @@ def load_demo_dataset(dataset_name: str):
             images, labels, label_names = load_cifar10_batch(batch_file)
 
             # Filter to requested categories
-            category_indices = {
-                label_names[i]: i for i in range(len(label_names))
-            }
+            category_indices = {label_names[i]: i for i in range(len(label_names))}
             requested_categories = dataset_info["categories"]
 
             # Collect images for requested categories
@@ -1118,7 +1114,9 @@ def load_demo_dataset(dataset_name: str):
                 "embedding", f"Starting embedding for {total} images...", 0, total
             )
 
-            for i, (image_array, category) in enumerate(zip(selected_images, selected_labels)):
+            for i, (image_array, category) in enumerate(
+                zip(selected_images, selected_labels)
+            ):
                 update_progress(
                     "embedding",
                     f"Embedding {category}: image {i + 1}/{total}",
@@ -1127,11 +1125,11 @@ def load_demo_dataset(dataset_name: str):
                 )
 
                 # Convert numpy array to PIL Image
-                img = Image.fromarray(image_array.astype('uint8'), 'RGB')
+                img = Image.fromarray(image_array.astype("uint8"), "RGB")
 
                 # Convert to bytes
                 img_buffer = io.BytesIO()
-                img.save(img_buffer, format='PNG')
+                img.save(img_buffer, format="PNG")
                 image_bytes = img_buffer.getvalue()
 
                 # Get embedding
@@ -1497,6 +1495,7 @@ def favicon():
     if not (Path(app.root_path) / "static" / "favicon.ico").exists():
         return "", 204
     return app.send_static_file("favicon.ico")
+
 
 @app.route("/api/clips")
 def list_clips():
