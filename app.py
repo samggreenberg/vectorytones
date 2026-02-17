@@ -880,6 +880,54 @@ def load_video_metadata_from_folders(video_dir: Path, categories: list[str]) -> 
     return metadata
 
 
+def load_image_metadata_from_folders(image_dir: Path, categories: list[str]) -> dict:
+    """Load image file metadata from category folders."""
+    metadata = {}
+
+    for category_folder in image_dir.iterdir():
+        if not category_folder.is_dir():
+            continue
+
+        category_name = category_folder.name
+        if category_name not in categories:
+            continue
+
+        # Find all image files in this category
+        for ext in ["*.png", "*.jpg", "*.jpeg", "*.gif", "*.bmp", "*.webp"]:
+            for image_path in category_folder.glob(ext):
+                metadata[image_path.name] = {
+                    "category": category_name,
+                    "path": image_path,
+                }
+
+    return metadata
+
+
+def load_paragraph_metadata_from_folders(
+    text_dir: Path, categories: list[str]
+) -> dict:
+    """Load paragraph/text file metadata from category folders."""
+    metadata = {}
+
+    for category_folder in text_dir.iterdir():
+        if not category_folder.is_dir():
+            continue
+
+        category_name = category_folder.name
+        if category_name not in categories:
+            continue
+
+        # Find all text files in this category
+        for ext in ["*.txt", "*.md"]:
+            for text_path in category_folder.glob(ext):
+                metadata[text_path.name] = {
+                    "category": category_name,
+                    "path": text_path,
+                }
+
+    return metadata
+
+
 def load_demo_dataset(dataset_name: str):
     """Load a demo dataset, downloading and embedding if necessary."""
     global clips
@@ -908,7 +956,213 @@ def load_demo_dataset(dataset_name: str):
             return
 
     # Process based on media type
-    if media_type == "video":
+    if media_type == "image":
+        # Handle image datasets
+        image_source = dataset_info.get("source", "cifar10_sample")
+
+        if image_source == "cifar10_sample":
+            # Check if image dataset exists
+            image_dir = DATA_DIR / "images" / "cifar10_sample"
+            if not image_dir.exists() or not any(image_dir.glob("*/*.png")):
+                # Dataset not available - provide helpful error message
+                update_progress("idle", "")
+                raise ValueError(
+                    "CIFAR-10 sample dataset not found. To use image datasets:\n"
+                    "1. Download CIFAR-10 from https://www.cs.toronto.edu/~kriz/cifar.html\n"
+                    "2. Extract sample images to data/images/cifar10_sample/ organized by category\n"
+                    "3. Or use 'Load from Folder' to import your own image files\n\n"
+                    "Expected directory structure:\n"
+                    "  data/images/cifar10_sample/airplane/*.png\n"
+                    "  data/images/cifar10_sample/automobile/*.png\n"
+                    "  etc."
+                )
+
+            metadata = load_image_metadata_from_folders(
+                image_dir, dataset_info["categories"]
+            )
+            image_files = [(meta["path"], meta) for meta in metadata.values()]
+
+            # Generate embeddings for images
+            clips.clear()
+            clip_id = 1
+            total = len(image_files)
+            update_progress(
+                "embedding", f"Starting embedding for {total} image files...", 0, total
+            )
+
+            for i, (image_path, meta) in enumerate(image_files):
+                update_progress(
+                    "embedding",
+                    f"Embedding {meta['category']}: {image_path.name} ({i + 1}/{total})",
+                    i + 1,
+                    total,
+                )
+
+                embedding = embed_image_file(image_path)
+                if embedding is None:
+                    continue
+
+                with open(image_path, "rb") as f:
+                    image_bytes = f.read()
+
+                # Get image dimensions
+                try:
+                    img = Image.open(image_path)
+                    width = img.width
+                    height = img.height
+                except Exception:
+                    width = 0
+                    height = 0
+
+                clips[clip_id] = {
+                    "id": clip_id,
+                    "type": "image",
+                    "duration": 0,  # Images don't have duration
+                    "file_size": len(image_bytes),
+                    "md5": hashlib.md5(image_bytes).hexdigest(),
+                    "embedding": embedding,
+                    "wav_bytes": None,
+                    "video_bytes": None,
+                    "image_bytes": image_bytes,
+                    "filename": image_path.name,
+                    "category": meta["category"],
+                    "width": width,
+                    "height": height,
+                }
+                clip_id += 1
+
+            # Save for future use
+            EMBEDDINGS_DIR.mkdir(parents=True, exist_ok=True)
+            with open(pkl_file, "wb") as f:
+                pickle.dump(
+                    {
+                        "name": dataset_name,
+                        "clips": {
+                            cid: {
+                                k: v.tolist() if isinstance(v, np.ndarray) else v
+                                for k, v in clip.items()
+                                if k not in ["wav_bytes", "video_bytes", "image_bytes"]
+                            }
+                            for cid, clip in clips.items()
+                        },
+                        "image_dir": str(image_dir.absolute()),
+                    },
+                    f,
+                )
+
+            update_progress("idle", f"Loaded {dataset_name} dataset")
+            return
+
+    elif media_type == "paragraph":
+        # Handle paragraph datasets
+        paragraph_source = dataset_info.get("source", "ag_news_sample")
+
+        if paragraph_source == "ag_news_sample":
+            # Check if paragraph dataset exists
+            text_dir = DATA_DIR / "text" / "ag_news_sample"
+            if not text_dir.exists() or not any(text_dir.glob("*/*.txt")):
+                # Dataset not available - provide helpful error message
+                update_progress("idle", "")
+                raise ValueError(
+                    "AG News sample dataset not found. To use paragraph datasets:\n"
+                    "1. Download AG News from https://huggingface.co/datasets/ag_news\n"
+                    "2. Extract sample paragraphs to data/text/ag_news_sample/ organized by category\n"
+                    "3. Or use 'Load from Folder' to import your own text files\n\n"
+                    "Expected directory structure:\n"
+                    "  data/text/ag_news_sample/world/*.txt\n"
+                    "  data/text/ag_news_sample/sports/*.txt\n"
+                    "  data/text/ag_news_sample/business/*.txt\n"
+                    "  data/text/ag_news_sample/science/*.txt"
+                )
+
+            metadata = load_paragraph_metadata_from_folders(
+                text_dir, dataset_info["categories"]
+            )
+            text_files = [(meta["path"], meta) for meta in metadata.values()]
+
+            # Generate embeddings for paragraphs
+            clips.clear()
+            clip_id = 1
+            total = len(text_files)
+            update_progress(
+                "embedding",
+                f"Starting embedding for {total} paragraph files...",
+                0,
+                total,
+            )
+
+            for i, (text_path, meta) in enumerate(text_files):
+                update_progress(
+                    "embedding",
+                    f"Embedding {meta['category']}: {text_path.name} ({i + 1}/{total})",
+                    i + 1,
+                    total,
+                )
+
+                embedding = embed_paragraph_file(text_path)
+                if embedding is None:
+                    continue
+
+                # Read text content
+                try:
+                    with open(text_path, "r", encoding="utf-8") as f:
+                        text_content = f.read().strip()
+                    word_count = len(text_content.split())
+                    character_count = len(text_content)
+                except Exception:
+                    text_content = ""
+                    word_count = 0
+                    character_count = 0
+
+                text_bytes = text_content.encode("utf-8")
+
+                clips[clip_id] = {
+                    "id": clip_id,
+                    "type": "paragraph",
+                    "duration": 0,  # Paragraphs don't have duration
+                    "file_size": len(text_bytes),
+                    "md5": hashlib.md5(text_bytes).hexdigest(),
+                    "embedding": embedding,
+                    "wav_bytes": None,
+                    "video_bytes": None,
+                    "image_bytes": None,
+                    "text_content": text_content,
+                    "filename": text_path.name,
+                    "category": meta["category"],
+                    "word_count": word_count,
+                    "character_count": character_count,
+                }
+                clip_id += 1
+
+            # Save for future use
+            EMBEDDINGS_DIR.mkdir(parents=True, exist_ok=True)
+            with open(pkl_file, "wb") as f:
+                pickle.dump(
+                    {
+                        "name": dataset_name,
+                        "clips": {
+                            cid: {
+                                k: v.tolist() if isinstance(v, np.ndarray) else v
+                                for k, v in clip.items()
+                                if k
+                                not in [
+                                    "wav_bytes",
+                                    "video_bytes",
+                                    "image_bytes",
+                                    "text_content",
+                                ]
+                            }
+                            for cid, clip in clips.items()
+                        },
+                        "text_dir": str(text_dir.absolute()),
+                    },
+                    f,
+                )
+
+            update_progress("idle", f"Loaded {dataset_name} dataset")
+            return
+
+    elif media_type == "video":
         # Handle video datasets
         video_source = dataset_info.get("source", "ucf101")
 
