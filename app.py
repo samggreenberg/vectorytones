@@ -305,7 +305,12 @@ def init_clips():
         )
         with torch.no_grad():
             outputs = clap_model.audio_model(**inputs)
-            embeddings = clap_model.audio_projection(outputs.pooler_output).numpy()
+            embeddings = (
+                clap_model.audio_projection(outputs.pooler_output)
+                .detach()
+                .cpu()
+                .numpy()
+            )
         print("DEBUG: Inference complete.", flush=True)
 
     for i in range(1, NUM_CLIPS + 1):
@@ -518,7 +523,12 @@ def embed_audio_file(audio_path: Path) -> Optional[np.ndarray]:
         )  # type: ignore
         with torch.no_grad():
             outputs = clap_model.audio_model(**inputs)
-            embedding = clap_model.audio_projection(outputs.pooler_output).numpy()
+            embedding = (
+                clap_model.audio_projection(outputs.pooler_output)
+                .detach()
+                .cpu()
+                .numpy()
+            )
 
         return embedding[0]
     except Exception as e:
@@ -565,12 +575,12 @@ def embed_video_file(video_path: Path) -> Optional[np.ndarray]:
 
         # Process frames with X-CLIP processor
         # X-CLIP expects a list of PIL Images
-        inputs = xclip_processor(videos=list(frames), return_tensors="pt") # type: ignore
+        inputs = xclip_processor(videos=list(frames), return_tensors="pt")  # type: ignore
 
         # Get embedding from X-CLIP
         with torch.no_grad():
             outputs = xclip_model.get_video_features(**inputs)
-            embedding = outputs.numpy()
+            embedding = outputs.detach().cpu().numpy()  # type: ignore
 
         return embedding[0]
     except Exception as e:
@@ -588,12 +598,12 @@ def embed_image_file(image_path: Path) -> Optional[np.ndarray]:
         image = Image.open(image_path).convert("RGB")
 
         # Process image with CLIP processor
-        inputs = clip_processor(images=image, return_tensors="pt")
+        inputs = clip_processor(images=image, return_tensors="pt")  # type: ignore
 
         # Get embedding from CLIP vision model
         with torch.no_grad():
             outputs = clip_model.get_image_features(**inputs)
-            embedding = outputs.numpy()
+            embedding = outputs.detach().cpu().numpy()  # type: ignore
 
         return embedding[0]
     except Exception as e:
@@ -621,7 +631,7 @@ def embed_paragraph_file(text_path: Path) -> Optional[np.ndarray]:
             f"passage: {text_content}", normalize_embeddings=True
         )
 
-        return embedding
+        return embedding  # type: ignore
     except Exception as e:
         print(f"Error embedding {text_path}: {e}")
         return None
@@ -1290,23 +1300,28 @@ def sort_clips():
         inputs = clap_processor(text=[text], return_tensors="pt")  # type: ignore
         with torch.no_grad():
             outputs = clap_model.text_model(**inputs)
-            text_vec = clap_model.text_projection(outputs.pooler_output).numpy()[0]
+            text_vec = (
+                clap_model.text_projection(outputs.pooler_output)
+                .detach()
+                .cpu()
+                .numpy()[0]
+            )
 
     elif media_type == "video":
         # Use X-CLIP for videos
         if xclip_model is None or xclip_processor is None:
             return jsonify({"error": "X-CLIP model not loaded"}), 500
-        inputs = xclip_processor(text=[text], return_tensors="pt")
+        inputs = xclip_processor(text=[text], return_tensors="pt")  # type: ignore
         with torch.no_grad():
-            text_vec = xclip_model.get_text_features(**inputs).numpy()[0]
+            text_vec = xclip_model.get_text_features(**inputs).detach().cpu().numpy()[0]  # type: ignore
 
     elif media_type == "image":
         # Use CLIP for images
         if clip_model is None or clip_processor is None:
             return jsonify({"error": "CLIP model not loaded"}), 500
-        inputs = clip_processor(text=[text], return_tensors="pt")
+        inputs = clip_processor(text=[text], return_tensors="pt")  # type: ignore
         with torch.no_grad():
-            text_vec = clip_model.get_text_features(**inputs).numpy()[0]
+            text_vec = clip_model.get_text_features(**inputs).detach().cpu().numpy()[0]  # type: ignore
 
     elif media_type == "paragraph":
         # Use E5-LARGE-V2 for paragraphs with "query:" prefix
