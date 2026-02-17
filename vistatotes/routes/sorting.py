@@ -1,6 +1,5 @@
 """Blueprint for sorting and voting routes."""
 
-import hashlib
 import json
 from pathlib import Path
 
@@ -9,31 +8,18 @@ import torch
 import torch.nn as nn
 from flask import Blueprint, jsonify, request
 
-from config import DATA_DIR, SAMPLE_RATE
-from vistatotes.models import (
-    analyze_labeling_progress,
-    calculate_cross_calibration_threshold,
-    calculate_gmm_threshold,
-    embed_audio_file,
-    embed_text_query,
-    get_clap_model,
-    train_and_score,
-    train_model,
-)
-from vistatotes.utils import (
-    add_favorite_detector,
-    add_label_to_history,
-    bad_votes,
-    clips,
-    get_favorite_detectors,
-    get_favorite_detectors_by_media,
-    get_inclusion,
-    good_votes,
-    label_history,
-    remove_favorite_detector,
-    rename_favorite_detector,
-    set_inclusion,
-)
+from config import DATA_DIR
+from vistatotes.models import (analyze_labeling_progress,
+                               calculate_cross_calibration_threshold,
+                               calculate_gmm_threshold, embed_audio_file,
+                               embed_text_query, get_clap_model,
+                               train_and_score, train_model)
+from vistatotes.utils import (add_favorite_detector, add_label_to_history,
+                              bad_votes, clips, get_favorite_detectors,
+                              get_favorite_detectors_by_media, get_inclusion,
+                              good_votes, label_history,
+                              remove_favorite_detector,
+                              rename_favorite_detector, set_inclusion)
 
 sorting_bp = Blueprint("sorting", __name__)
 

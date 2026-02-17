@@ -16,7 +16,9 @@ from config import (
 from vistatotes.utils import update_progress
 
 
-def download_file_with_progress(url: str, dest_path: Path, expected_size: int = 0) -> None:
+def download_file_with_progress(
+    url: str, dest_path: Path, expected_size: int = 0
+) -> None:
     """Download a file from a URL to a local path, reporting byte-level progress.
 
     Streams the HTTP response in 8 KB chunks and calls :func:`update_progress`
@@ -154,7 +156,9 @@ def download_ucf101_subset() -> Path:
     )
 
 
-def download_20newsgroups(categories: list[str]) -> tuple[list[str], list[int], list[str]]:
+def download_20newsgroups(
+    categories: list[str],
+) -> tuple[list[str], list[int], list[str]]:
     """Download and prepare a subset of the 20 Newsgroups text dataset.
 
     Uses scikit-learn's :func:`sklearn.datasets.fetch_20newsgroups` (which

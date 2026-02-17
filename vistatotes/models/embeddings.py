@@ -10,12 +10,8 @@ import torch
 from PIL import Image
 
 from config import SAMPLE_RATE
-from vistatotes.models.loader import (
-    get_clap_model,
-    get_clip_model,
-    get_e5_model,
-    get_xclip_model,
-)
+from vistatotes.models.loader import (get_clap_model, get_clip_model,
+                                      get_e5_model, get_xclip_model)
 
 
 def embed_audio_file(audio_path: Path) -> Optional[np.ndarray]:

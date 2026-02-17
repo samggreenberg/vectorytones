@@ -8,7 +8,6 @@ os.environ["MKL_NUM_THREADS"] = "1"
 print("⏳ Initializing VistaTotes...", flush=True)
 
 import hashlib
-from pathlib import Path
 
 print("⏳ Importing ML libraries (this may take a few seconds)...", flush=True)
 

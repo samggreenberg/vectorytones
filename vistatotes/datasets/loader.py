@@ -13,28 +13,14 @@ import numpy as np
 import torch
 from PIL import Image
 
-from config import (
-    CLIPS_PER_CATEGORY,
-    CLIPS_PER_VIDEO_CATEGORY,
-    EMBEDDINGS_DIR,
-    IMAGES_PER_CIFAR10_CATEGORY,
-    SAMPLE_RATE,
-)
+from config import (EMBEDDINGS_DIR, IMAGES_PER_CIFAR10_CATEGORY, SAMPLE_RATE)
 from vistatotes.datasets import DEMO_DATASETS
-from vistatotes.datasets.downloader import (
-    download_20newsgroups,
-    download_cifar10,
-    download_esc50,
-    download_ucf101_subset,
-)
-from vistatotes.models import (
-    embed_audio_file,
-    embed_image_file,
-    embed_paragraph_file,
-    embed_video_file,
-    get_clip_model,
-    get_e5_model,
-)
+from vistatotes.datasets.downloader import (download_20newsgroups,
+                                            download_cifar10, download_esc50,
+                                            download_ucf101_subset)
+from vistatotes.models import (embed_audio_file, embed_image_file,
+                               embed_paragraph_file, embed_video_file,
+                               get_clip_model)
 from vistatotes.utils import update_progress
 
 

@@ -5,22 +5,11 @@ from typing import Optional
 
 import torch
 from sentence_transformers import SentenceTransformer
-from transformers import (
-    ClapModel,
-    ClapProcessor,
-    CLIPModel,
-    CLIPProcessor,
-    XCLIPModel,
-    XCLIPProcessor,
-)
+from transformers import (ClapModel, ClapProcessor, CLIPModel, CLIPProcessor,
+                          XCLIPModel, XCLIPProcessor)
 
-from config import (
-    CLAP_MODEL_ID,
-    CLIP_MODEL_ID,
-    E5_MODEL_ID,
-    MODELS_CACHE_DIR,
-    XCLIP_MODEL_ID,
-)
+from config import (CLAP_MODEL_ID, CLIP_MODEL_ID, E5_MODEL_ID,
+                    MODELS_CACHE_DIR, XCLIP_MODEL_ID)
 
 # Model instances
 clap_model: Optional[ClapModel] = None
