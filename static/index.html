@@ -57,6 +57,7 @@
   .stripe-dot { position: absolute; left: 50%; width: 6px; height: 6px; border-radius: 50%; }
   .stripe-dot.good { background: #4caf50; transform: translateX(-25%); }
   .stripe-dot.bad { background: #f44336; transform: translateX(-75%); }
+  .stripe-dot.selected { background: #e0e0e0; transform: translateX(-50%); z-index: 5; width: 8px; height: 8px; border: 1px solid #1a1d27; }
   .stripe-threshold { position: absolute; left: 0; right: 0; height: 2px; background: #7c8aff; }
   .stripe-threshold::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 0; height: 0; border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-left: 6px solid #7c8aff; }
   .stripe-threshold::after { content: ''; position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: 0; height: 0; border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-right: 6px solid #7c8aff; }
@@ -747,6 +748,7 @@
 
   document.querySelectorAll('input[name="select-mode"]').forEach(radio => {
     radio.addEventListener("change", () => {
+      if (!radio.checked) return;
       selectMode = radio.value;
       const nextClip = findNextClip();
       if (nextClip && nextClip.id !== selected) {
@@ -1061,6 +1063,11 @@
     selected = id;
     renderClipList();
     renderCenter();
+
+    const activeItem = clipList.querySelector(".clip-item.active");
+    if (activeItem) {
+      activeItem.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
   }
 
   function renderCenter() {
@@ -1327,6 +1334,7 @@
     sortOrder.forEach((item, index) => {
       const isGood = votes.good.includes(item.id);
       const isBad = votes.bad.includes(item.id);
+      const isSelected = item.id === selected;
 
       if (isGood || isBad) {
         const dot = document.createElement("div");
@@ -1334,6 +1342,13 @@
         dot.style.top = `${(index / totalClips) * 100}%`;
         dot.setAttribute("data-clip-id", item.id);
         dot.setAttribute("data-index", index);
+        stripeContainer.appendChild(dot);
+      }
+
+      if (isSelected) {
+        const dot = document.createElement("div");
+        dot.className = "stripe-dot selected";
+        dot.style.top = `${(index / totalClips) * 100}%`;
         stripeContainer.appendChild(dot);
       }
     });
