@@ -1,7 +1,13 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
 flask
-numpy
-torch==2.0.0 --index-url https://download.pytorch.org/whl/cpu
+numpy<2
+torch>=2.0.0
 laion_clap
 librosa
 requests
 tqdm
+opencv-python-headless<4.10
+scikit-learn
+transformers
+sentence-transformers
+Pillow
