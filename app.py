@@ -1363,6 +1363,13 @@ def index():
     return app.send_static_file("index.html")
 
 
+@app.route("/favicon.ico")
+def favicon():
+    # Return empty response if file doesn't exist to stop 404 logs
+    if not (Path(app.root_path) / "static" / "favicon.ico").exists():
+        return "", 204
+    return app.send_static_file("favicon.ico")
+
 @app.route("/api/clips")
 def list_clips():
     result = []
