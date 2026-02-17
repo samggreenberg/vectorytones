@@ -171,6 +171,7 @@ def clear_dataset():
 
 def load_dataset_from_pickle(file_path: Path):
     """Load a dataset from a pickle file."""
+    update_progress("loading", "Reading cached dataset...", 0, 0)
     with open(file_path, "rb") as f:
         data = pickle.load(f)
 
@@ -185,7 +186,15 @@ def load_dataset_from_pickle(file_path: Path):
 
     # Convert to the app's clip format
     missing_media = 0
-    for clip_id, clip_info in clips_data.items():
+    total_clips = len(clips_data)
+    for idx, (clip_id, clip_info) in enumerate(clips_data.items()):
+        if total_clips > 0:
+            update_progress(
+                "loading",
+                f"Loading clip {idx + 1}/{total_clips}...",
+                idx + 1,
+                total_clips,
+            )
         # Determine media type
         media_type = clip_info.get("type", "audio")
 
@@ -706,7 +715,6 @@ def load_demo_dataset(dataset_name: str):
     # Check if already embedded
     pkl_file = EMBEDDINGS_DIR / f"{dataset_name}.pkl"
     if pkl_file.exists():
-        update_progress("loading", f"Loading {dataset_name} dataset...", 0, 0)
         load_dataset_from_pickle(pkl_file)
 
         # Check if any clips were actually loaded
