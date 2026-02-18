@@ -8,8 +8,8 @@ from flask import Blueprint, jsonify, request, send_file
 
 from config import (CIFAR10_DOWNLOAD_SIZE_MB, CLIPS_PER_CATEGORY,
                     CLIPS_PER_VIDEO_CATEGORY, DATA_DIR, EMBEDDINGS_DIR,
-                    ESC50_DOWNLOAD_SIZE_MB, SAMPLE_VIDEOS_DOWNLOAD_SIZE_MB,
-                    VIDEO_DIR)
+                    ESC50_DOWNLOAD_SIZE_MB, IMAGES_PER_CIFAR10_CATEGORY,
+                    SAMPLE_VIDEOS_DOWNLOAD_SIZE_MB, VIDEO_DIR)
 from vistatotes.datasets import (DEMO_DATASETS, export_dataset_to_file,
                                  load_dataset_from_folder,
                                  load_dataset_from_pickle, load_demo_dataset)
@@ -59,10 +59,14 @@ def demo_dataset_list():
         # Calculate number of files
         num_categories = len(dataset_info["categories"])
         if media_type == "video":
-            # For video datasets, estimate based on available files or use default
             num_files = num_categories * CLIPS_PER_VIDEO_CATEGORY
+        elif media_type == "image":
+            num_files = num_categories * IMAGES_PER_CIFAR10_CATEGORY
+        elif media_type == "paragraph":
+            # 20 Newsgroups: up to 50 texts per category
+            num_files = num_categories * 50
         else:
-            # For audio datasets (ESC-50 has 40 clips per category)
+            # Audio datasets (ESC-50 has 40 clips per category)
             num_files = num_categories * CLIPS_PER_CATEGORY
 
         # Calculate download size
@@ -98,8 +102,8 @@ def demo_dataset_list():
         demos.append(
             {
                 "name": name,
+                "label": dataset_info.get("label", name),
                 "ready": is_ready,
-                "num_categories": num_categories,
                 "num_files": num_files,
                 "download_size_mb": round(download_size_mb, 1),
                 "description": dataset_info.get("description", ""),

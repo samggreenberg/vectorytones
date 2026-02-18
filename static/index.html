@@ -137,13 +137,15 @@
   @keyframes indeterminate { 0% { margin-left: 0%; } 50% { margin-left: 70%; } 100% { margin-left: 0%; } }
   .progress-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.75rem; color: #fff; font-weight: bold; }
   .progress-message { font-size: 0.85rem; color: #aaa; margin-top: 8px; text-align: center; }
-  .demo-datasets { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; width: 100%; margin-top: 16px; }
-  .demo-dataset { padding: 16px; border: 2px solid #2a2d3a; border-radius: 8px; background: #1a1d27; cursor: pointer; transition: all 0.2s; text-align: center; }
+  .demo-datasets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; width: 100%; margin-top: 16px; }
+  .demo-column { display: flex; flex-direction: column; gap: 8px; }
+  .demo-column-header { font-size: 0.7rem; font-weight: 700; color: #7c8aff; text-transform: uppercase; letter-spacing: 0.08em; padding-bottom: 6px; border-bottom: 1px solid #2a2d3a; margin-bottom: 2px; }
+  .demo-dataset { padding: 14px; border: 2px solid #2a2d3a; border-radius: 8px; background: #1a1d27; cursor: pointer; transition: all 0.2s; text-align: left; }
   .demo-dataset:hover { border-color: #7c8aff; background: #1e2030; }
   .demo-dataset.ready { border-color: #4caf50; }
-  .demo-dataset h4 { font-size: 1rem; color: #7c8aff; margin-bottom: 4px; text-transform: capitalize; }
+  .demo-dataset h4 { font-size: 0.88rem; color: #e0e0e0; margin-bottom: 4px; }
   .demo-dataset p { font-size: 0.75rem; color: #888; margin: 0; }
-  .demo-dataset .ready-badge { display: inline-block; margin-top: 4px; padding: 2px 8px; background: #4caf50; color: #fff; font-size: 0.7rem; border-radius: 4px; }
+  .demo-dataset .ready-badge { display: inline-block; margin-top: 6px; padding: 2px 8px; background: #4caf50; color: #fff; font-size: 0.7rem; border-radius: 4px; }
   .back-button { margin-top: 16px; padding: 8px 24px; border: 1px solid #2a2d3a; border-radius: 4px; background: #1a1d27; color: #aaa; cursor: pointer; transition: all 0.2s; }
   .back-button:hover { background: #252940; color: #e0e0e0; }
   .dataset-bar { padding: 12px 16px; border-bottom: 1px solid #2a2d3a; display: flex; justify-content: space-between; align-items: center; }
@@ -722,31 +724,50 @@
       const data = await res.json();
 
       demoDatasetsDiv.innerHTML = "";
-      data.datasets.forEach(dataset => {
-      const div = document.createElement("div");
-      div.className = "demo-dataset" + (dataset.ready ? " ready" : "");
 
-      // Format file count with media type indicator
-      const mediaType = dataset.media_type || "audio";
-      const mediaLabel = mediaType === "video" ? "video clips" : "sound files";
-      const mediaIcon = mediaType === "video" ? "🎬" : "🔊";
-      const fileCountText = `${mediaIcon} ${dataset.num_files} ${mediaLabel}`;
+      // Group datasets by media type and display in fixed column order
+      const mediaOrder = ["video", "image", "audio", "paragraph"];
+      const mediaConfig = {
+        video:     { title: "Videos",  icon: "🎬", fileLabel: "video clips" },
+        image:     { title: "Images",  icon: "🖼",  fileLabel: "images" },
+        audio:     { title: "Sounds",  icon: "🔊", fileLabel: "sound files" },
+        paragraph: { title: "Texts",   icon: "📄", fileLabel: "text snippets" },
+      };
 
-      // Format download size
-      const sizeText = dataset.ready
-        ? `${dataset.download_size_mb} MB (cached)`
-        : `${dataset.download_size_mb} MB download`;
+      const grouped = {};
+      data.datasets.forEach(ds => {
+        const mt = ds.media_type || "audio";
+        if (!grouped[mt]) grouped[mt] = [];
+        grouped[mt].push(ds);
+      });
 
-      div.innerHTML = `
-        <h4>${dataset.name}</h4>
-        <p style="margin: 4px 0; font-size: 0.85rem;">${fileCountText}</p>
-        <p style="margin: 4px 0; font-size: 0.8rem; color: #888;">${dataset.num_categories} categories</p>
-        <p style="margin: 4px 0; font-size: 0.8rem; color: #666;">${sizeText}</p>
-        ${dataset.ready ? '<span class="ready-badge">Ready</span>' : '<span style="font-size:0.7rem;color:#888;">Needs download</span>'}
-      `;
-      div.onclick = () => loadDemo(dataset.name);
-      demoDatasetsDiv.appendChild(div);
-    });
+      mediaOrder.forEach(mt => {
+        const items = grouped[mt] || [];
+        if (!items.length) return;
+        const cfg = mediaConfig[mt];
+
+        const col = document.createElement("div");
+        col.className = "demo-column";
+        col.innerHTML = `<div class="demo-column-header">${cfg.title}</div>`;
+
+        items.forEach(dataset => {
+          const div = document.createElement("div");
+          div.className = "demo-dataset" + (dataset.ready ? " ready" : "");
+          const sizeText = dataset.ready
+            ? `${dataset.download_size_mb} MB (cached)`
+            : `${dataset.download_size_mb} MB to download`;
+          div.innerHTML = `
+            <h4>${dataset.label}</h4>
+            <p style="margin: 4px 0 8px; font-size: 0.75rem; color: #999; line-height: 1.45;">${dataset.description}</p>
+            <p style="margin: 0; font-size: 0.72rem; color: #666;">${cfg.icon} ${dataset.num_files} ${cfg.fileLabel} &middot; ${sizeText}</p>
+            ${dataset.ready ? '<span class="ready-badge">Ready</span>' : '<span style="font-size:0.7rem;color:#666;display:inline-block;margin-top:6px;">Needs download</span>'}
+          `;
+          div.onclick = () => loadDemo(dataset.name);
+          col.appendChild(div);
+        });
+
+        demoDatasetsDiv.appendChild(col);
+      });
     } catch (e) {
       demoDatasetsDiv.innerHTML = `<div style="color:#f44336; text-align:center;">Error loading demo datasets: ${e.message}</div>`;
     }
