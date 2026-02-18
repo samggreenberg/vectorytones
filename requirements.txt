@@ -17,3 +17,9 @@ tqdm
 -r vistatotes/media/video/requirements.txt
 -r vistatotes/media/image/requirements.txt
 -r vistatotes/media/text/requirements.txt
+
+# Per-importer dependencies.
+# Each importer declares its own requirements in its subdirectory.
+# To add a new importer, create vistatotes/datasets/importers/<name>/requirements.txt,
+# then add a -r line to requirements-importers.txt.
+-r requirements-importers.txt
