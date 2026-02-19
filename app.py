@@ -77,10 +77,28 @@ app.register_blueprint(exporters_bp)
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    import sys
+    import argparse
 
-    # Check if we're running in local mode or deployment mode
-    if len(sys.argv) > 1 and sys.argv[1] == "--local":
+    parser = argparse.ArgumentParser(description="VistaTotes — media explorer web app")
+    parser.add_argument("--local", action="store_true", help="Run in local development mode")
+    parser.add_argument(
+        "--autodetect",
+        action="store_true",
+        help="Run a detector on a dataset from the command line and print predicted-Good items",
+    )
+    parser.add_argument("--dataset", type=str, help="Path to a dataset pickle file (used with --autodetect)")
+    parser.add_argument("--detector", type=str, help="Path to a detector JSON file (used with --autodetect)")
+    args = parser.parse_args()
+
+    if args.autodetect:
+        if not args.dataset or not args.detector:
+            parser.error("--autodetect requires both --dataset and --detector")
+
+        from vistatotes.cli import autodetect_main
+
+        autodetect_main(args.dataset, args.detector)
+
+    elif args.local:
         # Local development mode
         print("🚀 Running in LOCAL mode (accessible from other devices)", flush=True)
         app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)

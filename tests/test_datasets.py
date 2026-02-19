@@ -63,33 +63,20 @@ class TestStartupState:
         Verify that the production startup block in app.py does NOT call
         init_clips() – it should only load models and wait for user selection.
         """
-        import ast
         import inspect
 
         source = inspect.getsource(app_module)
-        tree = ast.parse(source)
 
-        # Find the else-branch of the top-level if __name__ == '__main__' block
-        for node in ast.walk(tree):
-            if isinstance(node, ast.If):
-                # Look for `if __name__ == "__main__"` or nested if/else
-                for child in ast.walk(node):
-                    if isinstance(child, ast.Call):
-                        func = child.func
-                        _ = (
-                            func.id
-                            if isinstance(func, ast.Name)
-                            else getattr(func, "attr", "")
-                        )
-                        # init_clips should not appear inside the else branch
-                        # We verify it by checking the source of production block
-                        # (the else branch starts after the --local check)
-        # Simple source-level check: the else branch must not contain init_clips()
-        # Extract the else branch text
-        main_block_start = source.find('sys.argv[1] == "--local"')
-        else_start = source.find("else:", main_block_start)
+        # The production path is the final else branch after the argparse
+        # if/elif/else chain.  Find the last else: in the __main__ block.
+        main_block_start = source.find('if __name__ == "__main__"')
+        assert main_block_start != -1, "Could not find __main__ block"
+        main_body = source[main_block_start:]
+
+        # Find the production else branch (the last else: in the block)
+        else_start = main_body.rfind("else:")
         assert else_start != -1, "Could not find else branch in __main__ block"
-        else_body = source[else_start:]
+        else_body = main_body[else_start:]
         assert "init_clips()" not in else_body, (
             "init_clips() must not be called automatically in production startup"
         )
