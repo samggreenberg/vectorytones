@@ -115,6 +115,33 @@ Open that URL in your browser. The app starts with no clips loaded — use the m
 
 Press **Ctrl+C** in the terminal to stop the server.
 
+## Running a detector from the command line
+
+If you have a dataset file (`.pkl`) and a detector file (`.json`), you can run the detector against the dataset without starting the web server. This prints which items the detector predicts as "Good."
+
+```bash
+python app.py --autodetect --dataset path/to/dataset.pkl --detector path/to/detector.json
+```
+
+**How to get the files:**
+
+- **Dataset file** — Export from the web UI via the dataset menu ("Export dataset"), or use a cached `.pkl` file from the `data/embeddings/` directory after loading a demo dataset.
+- **Detector file** — In the web UI, vote on some items, then export a detector from the sorting panel. Save the returned JSON to a file. You can also use a favorite detector exported via the API (`POST /api/detector/export`).
+
+**Example output:**
+
+```
+Predicted Good (5 items):
+
+  1-34094-A-6.wav  (score: 0.9832, category: cat)
+  1-30226-A-0.wav  (score: 0.9541, category: dog)
+  1-17150-B-2.wav  (score: 0.8923, category: cat)
+  1-22694-A-4.wav  (score: 0.7612, category: dog)
+  1-77445-A-1.wav  (score: 0.6204, category: cat)
+```
+
+Both `--dataset` and `--detector` are required when using `--autodetect`.
+
 ## Loading a demo dataset
 
 When the app is running, click the hamburger menu in the top-left corner to open the dataset panel. From there you can browse the available demo datasets and load one. Each demo is downloaded and embedded on first use, then cached for instant loading afterward.
