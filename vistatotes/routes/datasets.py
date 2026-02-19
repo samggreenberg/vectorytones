@@ -167,6 +167,16 @@ def demo_dataset_list():
 
         media_type = dataset_info.get("media_type", "audio")
 
+        # Some pkl files reference external media directories rather than
+        # inlining bytes.  If that directory has been removed since the pkl
+        # was created, the dataset can't actually be loaded — don't show it
+        # as ready.  Each demo dataset declares its own required_folder so
+        # this check stays generic as new demo datasets are added.
+        if is_ready:
+            required_folder = dataset_info.get("required_folder")
+            if required_folder is not None and not required_folder.exists():
+                is_ready = False
+
         # Calculate number of files
         num_categories = len(dataset_info["categories"])
         if media_type == "video":
