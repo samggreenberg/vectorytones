@@ -95,6 +95,62 @@ class TestStartupState:
         )
 
 
+class TestDemoDatasetReadiness:
+    """A dataset with a stale pkl (source data removed) must not show as ready."""
+
+    def test_audio_pkl_without_esc50_shows_not_ready(self, client):
+        """Audio pkl exists but ESC-50 audio dir is absent → not ready."""
+        import pickle
+
+        from config import DATA_DIR, EMBEDDINGS_DIR
+
+        esc50_dir = DATA_DIR / "ESC-50-master" / "audio"
+        if esc50_dir.exists():
+            pytest.skip("ESC-50 is present; cannot test stale-pkl scenario")
+
+        EMBEDDINGS_DIR.mkdir(parents=True, exist_ok=True)
+        pkl_file = EMBEDDINGS_DIR / "nature_sounds.pkl"
+        pkl_file.write_bytes(pickle.dumps({"name": "nature_sounds", "clips": {}}))
+        try:
+            resp = client.get("/api/dataset/demo-list")
+            data = resp.get_json()
+            ds = next((d for d in data["datasets"] if d["name"] == "nature_sounds"), None)
+            assert ds is not None
+            assert ds["ready"] is False, "Stale audio pkl without ESC-50 dir must not be ready"
+        finally:
+            pkl_file.unlink(missing_ok=True)
+            try:
+                EMBEDDINGS_DIR.rmdir()
+            except OSError:
+                pass
+
+    def test_video_pkl_without_ucf101_shows_not_ready(self, client):
+        """Video pkl exists but UCF-101 dir is absent → not ready."""
+        import pickle
+
+        from config import EMBEDDINGS_DIR, VIDEO_DIR
+
+        ucf101_dir = VIDEO_DIR / "ucf101"
+        if ucf101_dir.exists():
+            pytest.skip("UCF-101 is present; cannot test stale-pkl scenario")
+
+        EMBEDDINGS_DIR.mkdir(parents=True, exist_ok=True)
+        pkl_file = EMBEDDINGS_DIR / "activities_video.pkl"
+        pkl_file.write_bytes(pickle.dumps({"name": "activities_video", "clips": {}}))
+        try:
+            resp = client.get("/api/dataset/demo-list")
+            data = resp.get_json()
+            ds = next((d for d in data["datasets"] if d["name"] == "activities_video"), None)
+            assert ds is not None
+            assert ds["ready"] is False, "Stale video pkl without UCF-101 dir must not be ready"
+        finally:
+            pkl_file.unlink(missing_ok=True)
+            try:
+                EMBEDDINGS_DIR.rmdir()
+            except OSError:
+                pass
+
+
 class TestImporterMetadata:
     """Importer to_dict() must include the icon field."""
 

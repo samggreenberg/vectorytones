@@ -7,7 +7,7 @@ from pathlib import Path
 from flask import Blueprint, jsonify, request, send_file
 
 from config import (CIFAR10_DOWNLOAD_SIZE_MB, CLIPS_PER_CATEGORY,
-                    CLIPS_PER_VIDEO_CATEGORY, EMBEDDINGS_DIR,
+                    CLIPS_PER_VIDEO_CATEGORY, DATA_DIR, EMBEDDINGS_DIR,
                     ESC50_DOWNLOAD_SIZE_MB, IMAGES_PER_CIFAR10_CATEGORY,
                     SAMPLE_VIDEOS_DOWNLOAD_SIZE_MB, VIDEO_DIR)
 from vistatotes.datasets import (DEMO_DATASETS, export_dataset_to_file,
@@ -166,6 +166,19 @@ def demo_dataset_list():
         is_ready = pkl_file.exists()
 
         media_type = dataset_info.get("media_type", "audio")
+
+        # Audio and video pkl files store references to external media
+        # directories rather than inline bytes.  If the source directory
+        # has been removed since the pkl was created, the dataset cannot
+        # actually be loaded — don't show it as ready.
+        if is_ready:
+            if media_type == "audio":
+                if not (DATA_DIR / "ESC-50-master" / "audio").exists():
+                    is_ready = False
+            elif media_type == "video":
+                video_source = dataset_info.get("source", "ucf101")
+                if video_source == "ucf101" and not (VIDEO_DIR / "ucf101").exists():
+                    is_ready = False
 
         # Calculate number of files
         num_categories = len(dataset_info["categories"])
