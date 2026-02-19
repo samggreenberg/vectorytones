@@ -143,24 +143,72 @@ pip install -r requirements-dev.txt
 Then run:
 
 ```bash
-python -m pytest test_app.py -v
+python -m pytest tests/ -v
 ```
 
 ## Project structure
 
 ```
 vistatotes/
-├── app.py                   # Flask backend — routes, embedding models, voting,
-│                            #   sorting (text, learned, detector, example, label-file),
-│                            #   dataset management, and demo dataset downloads
-├── static/
-│   └── index.html           # Single-page frontend (HTML, CSS, vanilla JS)
-├── test_app.py              # Test suite (pytest)
-├── requirements.txt         # Core Python dependencies
-├── requirements-cpu.txt     # CPU-only dependencies (PyTorch CPU wheel)
-├── requirements-gpu.txt     # GPU-enabled dependencies (PyTorch with CUDA)
-├── requirements-dev.txt     # Dev dependencies (requirements.txt + pytest)
-├── TEST_COVERAGE_ANALYSIS.md
-├── .gitignore
+├── app.py                          # Flask entry point, registers blueprints
+├── config.py                       # Constants (SAMPLE_RATE, paths, model IDs)
+├── vistatotes/                     # Main application package
+│   ├── routes/                     # Flask blueprints
+│   │   ├── main.py                 #   Core routes
+│   │   ├── clips.py                #   Clip endpoints
+│   │   ├── sorting.py              #   Sorting & voting endpoints
+│   │   ├── datasets.py             #   Dataset management endpoints
+│   │   └── exporters.py            #   Exporter endpoints
+│   ├── models/                     # ML models
+│   │   ├── embeddings.py           #   Embedding model wrappers
+│   │   ├── loader.py               #   Model loading
+│   │   ├── training.py             #   Neural net training
+│   │   └── progress.py             #   Progress tracking
+│   ├── media/                      # Media type plugins
+│   │   ├── base.py                 #   Abstract MediaType base class
+│   │   ├── audio/                  #   Audio plugin (LAION-CLAP embeddings)
+│   │   ├── image/                  #   Image plugin (CLIP embeddings)
+│   │   ├── text/                   #   Text plugin (E5-large-v2 embeddings)
+│   │   └── video/                  #   Video plugin
+│   ├── datasets/                   # Dataset loading & importing
+│   │   ├── loader.py               #   Dataset loading logic
+│   │   ├── downloader.py           #   Demo dataset downloads
+│   │   ├── config.py               #   Dataset configuration
+│   │   └── importers/              #   Data importer plugins
+│   │       ├── base.py             #     Abstract DatasetImporter base class
+│   │       ├── folder/             #     Folder importer
+│   │       ├── pickle/             #     Pickle file importer
+│   │       └── http_zip/           #     HTTP ZIP archive importer
+│   ├── exporters/                  # Results exporter plugins
+│   │   ├── base.py                 #   Abstract exporter base class
+│   │   ├── email_smtp/             #   Email (SMTP) exporter
+│   │   ├── file/                   #   File exporter
+│   │   └── gui/                    #   GUI exporter
+│   ├── audio/                      # Audio utilities
+│   │   └── generator.py            #   Audio generation
+│   └── utils/                      # Shared utilities
+│       ├── state.py                #   Global state (clips, votes)
+│       └── progress.py             #   Progress helpers
+├── static/                         # Frontend
+│   ├── index.html                  #   HTML structure
+│   ├── app.js                      #   All frontend JavaScript
+│   └── styles.css                  #   All CSS styles
+├── tests/                          # Test suite (pytest)
+├── requirements.txt                # Core Python dependencies
+├── requirements-cpu.txt            # CPU-only dependencies (PyTorch CPU wheel)
+├── requirements-gpu.txt            # GPU-enabled dependencies (PyTorch with CUDA)
+├── requirements-dev.txt            # Dev dependencies (requirements.txt + pytest)
+├── requirements-importers.txt      # Aggregated importer dependencies
+├── requirements-exporters.txt      # Aggregated exporter dependencies
+├── EXTENDING.md                    # Guide for writing plugins
 └── README.md
 ```
+
+## Extending with plugins
+
+VistaTotes has a plugin architecture for media types, data importers, and results exporters. See [EXTENDING.md](EXTENDING.md) for full documentation, including:
+
+- **[Adding a Data Importer](EXTENDING.md#adding-a-data-importer)** — Auto-discovered plugins that load datasets from new sources (S3, databases, APIs, etc.). Subclass `DatasetImporter`, expose an `IMPORTER` instance, and the system wires up API routes and UI forms automatically.
+- **[Adding a Results Exporter](EXTENDING.md#adding-a-results-exporter)** — Export votes, labels, or detector weights in new formats by adding routes to the appropriate blueprint.
+- **[Adding a Media Type](EXTENDING.md#adding-a-media-type)** — Support new content types (code, 3D models, etc.) by subclassing `MediaType` with embedding, serving, and clip-loading methods.
+- **[Dependency Management](EXTENDING.md#dependency-management)** — How the layered requirements file structure works and where to add new dependencies.
