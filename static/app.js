@@ -1522,7 +1522,7 @@
     if (mediaType === "video") {
       playerHTML = `<video controls loop autoplay src="/api/clips/${c.id}/video" id="clip-video" style="width: 600px; max-height: 400px; border: 1px solid #2a2d3a; border-radius: 8px; background: #1a1d27;"></video>`;
     } else if (mediaType === "image") {
-      playerHTML = `<img src="/api/clips/${c.id}/image" id="clip-image" style="max-width: 600px; max-height: 400px; border: 1px solid #2a2d3a; border-radius: 8px; background: #1a1d27;">`;
+      playerHTML = `<div style="flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center;"><img src="/api/clips/${c.id}/image" id="clip-image" style="max-width: 100%; max-height: 100%; object-fit: contain; border: 1px solid #2a2d3a; border-radius: 8px; background: #1a1d27;"></div>`;
     } else if (mediaType === "paragraph") {
       playerHTML = `
         <div id="clip-paragraph" style="max-width: 600px; max-height: 400px; overflow-y: auto; padding: 16px; border: 1px solid #2a2d3a; border-radius: 8px; background: #1a1d27; white-space: pre-wrap; line-height: 1.6; text-align: left;">
