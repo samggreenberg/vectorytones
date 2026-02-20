@@ -41,15 +41,18 @@ class TestInitClips:
 
     def test_deterministic_embeddings(self):
         """CLAP embeddings should be deterministic for the same input audio."""
-        emb_first = app_module.clips[1]["embedding"].copy()
-        # Re-init and check the same values appear
-        old_clips = dict(app_module.clips)
-        app_module.clips.clear()
-        app_module.init_clips()
-        np.testing.assert_array_almost_equal(app_module.clips[1]["embedding"], emb_first)
-        # Restore
-        app_module.clips.clear()
-        app_module.clips.update(old_clips)
+        from pathlib import Path
+
+        from config import DATA_DIR
+        from vtsearch.models import embed_audio_file
+
+        clip = app_module.clips[1]
+        # Re-embed the same WAV and verify the result matches
+        temp_path = DATA_DIR / "temp_determ_test.wav"
+        temp_path.write_bytes(clip["wav_bytes"])
+        embedding = embed_audio_file(temp_path)
+        temp_path.unlink(missing_ok=True)
+        np.testing.assert_array_almost_equal(embedding, clip["embedding"])
 
 
 class TestClipMD5:
@@ -69,17 +72,11 @@ class TestClipMD5:
         assert len(md5_hashes) == len(app_module.clips)
 
     def test_md5_deterministic(self):
-        """MD5 should be the same for the same clip across re-init."""
-        clip_1_md5 = app_module.clips[1]["md5"]
-        old_clips = dict(app_module.clips)
-
-        app_module.clips.clear()
-        app_module.init_clips()
-        assert app_module.clips[1]["md5"] == clip_1_md5
-
-        # Restore
-        app_module.clips.clear()
-        app_module.clips.update(old_clips)
+        """MD5 should be the same for the same clip across re-generation."""
+        clip = app_module.clips[1]
+        # Regenerate the WAV with the same parameters and verify MD5
+        wav_bytes = app_module.generate_wav(clip["frequency"], clip["duration"])
+        assert hashlib.md5(wav_bytes).hexdigest() == clip["md5"]
 
 
 class TestListClips:

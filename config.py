@@ -32,6 +32,9 @@ IMAGES_PER_CIFAR10_CATEGORY = 100
 IMAGES_PER_CALTECH101_CATEGORY = 80
 TEXTS_PER_CATEGORY = 50
 
+# Training
+TRAIN_EPOCHS = 200
+
 # Model IDs
 CLAP_MODEL_ID = "laion/clap-htsat-unfused"
 XCLIP_MODEL_ID = "microsoft/xclip-base-patch32"
