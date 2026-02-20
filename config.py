@@ -28,6 +28,9 @@ CLIPS_PER_CATEGORY = 40
 CLIPS_PER_VIDEO_CATEGORY = 10
 IMAGES_PER_CIFAR10_CATEGORY = 100
 
+# Training
+TRAIN_EPOCHS = 200
+
 # Model IDs
 CLAP_MODEL_ID = "laion/clap-htsat-unfused"
 XCLIP_MODEL_ID = "microsoft/xclip-base-patch32"

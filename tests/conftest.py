@@ -1,5 +1,11 @@
 import pytest
 
+import config
+
+# Reduce training epochs for faster tests (default is 200; 30 is sufficient
+# for the tiny MLP to converge on the small test dataset).
+config.TRAIN_EPOCHS = 30
+
 import app as app_module
 
 # Import refactored modules and make them accessible through app_module

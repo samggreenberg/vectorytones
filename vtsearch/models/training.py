@@ -7,6 +7,8 @@ import torch
 import torch.nn as nn
 from sklearn.mixture import GaussianMixture
 
+from config import TRAIN_EPOCHS
+
 
 def calculate_gmm_threshold(scores: list[float]) -> float:
     """Use a Gaussian Mixture Model to find a threshold between two score distributions.
@@ -113,7 +115,7 @@ def train_model(
     loss_fn = nn.BCELoss(reduction="none")
 
     model.train()
-    for _ in range(200):
+    for _ in range(TRAIN_EPOCHS):
         optimizer.zero_grad()
         predictions = model(X_train)
         losses = loss_fn(predictions, y_train)
