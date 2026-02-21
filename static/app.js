@@ -39,17 +39,16 @@
   const vtDialogActions = document.getElementById("vt-dialog-actions");
 
   const VT_ICONS = {
-    warning: "/favicon-surprised.ico",
-    error: "/favicon-frown.ico",
-    success: "/favicon-smile.ico",
-    info: "/favicon-smile.ico",
+    warning: "\u26A0\uFE0F",
+    error: "\u274C",
+    success: "\u2705",
+    info: "\u2139\uFE0F",
   };
 
   function vtShowDialog({ message, type, showInput, inputDefault, buttons }) {
     return new Promise((resolve) => {
-      const iconSrc = VT_ICONS[type] || VT_ICONS.info;
-      vtDialogIcon.innerHTML = '<img src="' + iconSrc + '" alt="">';
-      vtDialogIcon.className = "vt-dialog-icon";
+      vtDialogIcon.textContent = VT_ICONS[type] || VT_ICONS.info;
+      vtDialogIcon.className = "vt-dialog-icon " + (type || "info");
       vtDialogMessage.textContent = message;
 
       if (showInput) {
