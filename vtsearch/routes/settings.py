@@ -50,6 +50,12 @@ def update_settings():
         except (TypeError, ValueError):
             return jsonify({"error": "volume must be a number"}), 400
 
+    if "theme" in body:
+        try:
+            settings.set_theme(str(body["theme"]))
+        except ValueError:
+            return jsonify({"error": "theme must be 'dark' or 'light'"}), 400
+
     return jsonify(settings.get_all())
 
 

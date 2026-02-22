@@ -31,6 +31,11 @@
   const sortProgressFill = document.querySelector(".sort-progress-fill");
   let sortProgressTimer = null;
 
+  // --- Theme helper: read CSS custom property values for canvas drawing ---
+  function themeColor(varName) {
+    return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  }
+
   // --- Custom VTSearch dialog system (replaces native alert/confirm/prompt) ---
   const vtDialogModal = document.getElementById("vt-dialog-modal");
   const vtDialogIcon = document.getElementById("vt-dialog-icon");
@@ -290,7 +295,7 @@
     progressFill.classList.add("indeterminate");
     progressText.textContent = "";
     progressMessage.textContent = "Loading...";
-    progressMessage.style.color = "#aaa";
+    progressMessage.style.color = "var(--text-secondary)";
   }
 
   async function pollProgress() {
@@ -299,7 +304,7 @@
 
     if (progress.error) {
       progressMessage.textContent = `Error: ${progress.error}`;
-      progressMessage.style.color = "#f44336";
+      progressMessage.style.color = "var(--color-bad)";
       stopProgressPolling();
       setTimeout(() => {
         showWelcomeScreen();
@@ -343,7 +348,7 @@
       progressText.textContent = "";
     }
     progressMessage.textContent = progress.message || "Loading...";
-    progressMessage.style.color = "#aaa";
+    progressMessage.style.color = "var(--text-secondary)";
   }
 
   function startProgressPolling() {
@@ -383,12 +388,12 @@
       if (!res.ok) {
         const error = await res.json();
         progressMessage.textContent = `Error: ${error.error}`;
-        progressMessage.style.color = "#f44336";
+        progressMessage.style.color = "var(--color-bad)";
         stopProgressPolling();
       }
     } catch (e) {
       progressMessage.textContent = `Error: ${e.message}`;
-      progressMessage.style.color = "#f44336";
+      progressMessage.style.color = "var(--color-bad)";
       stopProgressPolling();
     }
 
@@ -408,12 +413,12 @@
       if (!res.ok) {
         const error = await res.json();
         progressMessage.textContent = `Error: ${error.error}`;
-        progressMessage.style.color = "#f44336";
+        progressMessage.style.color = "var(--color-bad)";
         stopProgressPolling();
       }
     } catch (e) {
       progressMessage.textContent = `Error: ${e.message}`;
-      progressMessage.style.color = "#f44336";
+      progressMessage.style.color = "var(--color-bad)";
       stopProgressPolling();
     }
   }
@@ -492,7 +497,7 @@
               <h4>${dataset.label}</h4>
               <p style="margin: 4px 0 8px; font-size: 0.75rem; color: #999; line-height: 1.45;">${dataset.description}</p>
               <p style="margin: 0; font-size: 0.72rem; color: #666;">${cfg.icon} ${dataset.num_files} ${cfg.fileLabel} &middot; ${sizeText}</p>
-              ${dataset.ready ? '<span class="ready-badge">Ready</span>' : '<span style="font-size:0.7rem;color:#666;display:inline-block;margin-top:6px;">Needs download</span>'}
+              ${dataset.ready ? '<span class="ready-badge">Ready</span>' : '<span style="font-size:0.7rem;color:var(--text-dim);display:inline-block;margin-top:6px;">Needs download</span>'}
             `;
             div.onclick = () => loadDemo(dataset.name);
             col.appendChild(div);
@@ -501,7 +506,7 @@
           demoDatasetsDiv.appendChild(col);
         });
       } catch (e) {
-        demoDatasetsDiv.innerHTML = `<div style="color:#f44336; text-align:center;">Error loading demo datasets: ${e.message}</div>`;
+        demoDatasetsDiv.innerHTML = `<div style="color:var(--color-bad); text-align:center;">Error loading demo datasets: ${e.message}</div>`;
       }
     });
     datasetOptions.appendChild(demoBtnEl);
@@ -509,13 +514,13 @@
     // Always render the autodetect toggle last, after all import options
     const autodetectDiv = document.createElement("div");
     autodetectDiv.id = "autodetect-toggle";
-    autodetectDiv.style = "margin-top: 16px; padding: 12px; background: #2a2d3a; border-radius: 4px;";
+    autodetectDiv.style = "margin-top: 16px; padding: 12px; background: var(--border); border-radius: 4px;";
     autodetectDiv.innerHTML = `
-      <label style="display: flex; align-items: center; color: #e0e0e0; cursor: pointer;">
+      <label style="display: flex; align-items: center; color: var(--text-primary); cursor: pointer;">
         <input type="checkbox" id="autodetect-mode-checkbox" style="margin-right: 8px;">
         <span>Run auto-detect after loading (skip manual labeling)</span>
       </label>
-      <p style="font-size: 0.85rem; color: #aaa; margin: 8px 0 0 0;">When checked, automatically runs all favorite detectors and shows positive hits.</p>
+      <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 8px 0 0 0;">When checked, automatically runs all favorite detectors and shows positive hits.</p>
     `;
     datasetOptions.appendChild(autodetectDiv);
   }
@@ -524,15 +529,15 @@
     datasetOptions.style.display = "none";
     backButton.style.display = "block";
 
-    const inputStyle = "width:100%;padding:8px;background:#252940;border:1px solid #2a2d3a;border-radius:4px;color:#e0e0e0;box-sizing:border-box;";
+    const inputStyle = "width:100%;padding:8px;background:var(--bg-hover);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);box-sizing:border-box;";
     let html = `<div style="max-width:420px;width:100%;margin:0 auto;">`;
-    html += `<h3 style="margin-bottom:16px;color:#e0e0e0;">${importer.display_name}</h3>`;
+    html += `<h3 style="margin-bottom:16px;color:var(--text-primary);">${importer.display_name}</h3>`;
     html += `<form id="ext-imp-form">`;
     for (const field of importer.fields) {
       html += `<div style="margin-bottom:14px;">`;
-      html += `<label style="display:block;margin-bottom:5px;color:#aaa;font-size:0.85rem;">${field.label}${field.required ? " *" : ""}</label>`;
+      html += `<label style="display:block;margin-bottom:5px;color:var(--text-secondary);font-size:0.85rem;">${field.label}${field.required ? " *" : ""}</label>`;
       if (field.field_type === "file") {
-        html += `<input type="file" name="${field.key}" accept="${field.accept}" style="color:#e0e0e0;width:100%;" ${field.required ? "required" : ""}>`;
+        html += `<input type="file" name="${field.key}" accept="${field.accept}" style="color:var(--text-primary);width:100%;" ${field.required ? "required" : ""}>`;
       } else if (field.field_type === "select") {
         html += `<select name="${field.key}" style="${inputStyle}">`;
         for (const opt of field.options) {
@@ -542,7 +547,7 @@
       } else if (field.field_type === "folder") {
         html += `<div style="display:flex;gap:8px;align-items:center;">`;
         html += `<input type="text" name="${field.key}" placeholder="${field.description}" style="${inputStyle}flex:1;" data-folder-input="true" ${field.required ? "required" : ""}>`;
-        html += `<button type="button" data-browse-btn="true" style="padding:8px 14px;background:#252940;border:1px solid #2a2d3a;border-radius:4px;color:#aaa;cursor:pointer;white-space:nowrap;">Browse…</button>`;
+        html += `<button type="button" data-browse-btn="true" style="padding:8px 14px;background:var(--bg-hover);border:1px solid var(--border);border-radius:4px;color:var(--text-secondary);cursor:pointer;white-space:nowrap;">Browse…</button>`;
         html += `</div>`;
         html += `<input type="file" data-folder-picker="true" webkitdirectory style="display:none;">`;
       } else {
@@ -550,11 +555,11 @@
         html += `<input type="${itype}" name="${field.key}" value="${field.default}" placeholder="${field.description}" style="${inputStyle}" ${field.required ? "required" : ""}>`;
       }
       if (field.description) {
-        html += `<div style="margin-top:4px;font-size:0.75rem;color:#666;">${field.description}</div>`;
+        html += `<div style="margin-top:4px;font-size:0.75rem;color:var(--text-dim);">${field.description}</div>`;
       }
       html += `</div>`;
     }
-    html += `<button type="submit" style="width:100%;padding:10px;background:#7c8aff;border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:0.9rem;">Import</button>`;
+    html += `<button type="submit" style="width:100%;padding:10px;background:var(--accent);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:0.9rem;">Import</button>`;
     html += `</form></div>`;
 
     extendedImporterForm.innerHTML = html;
@@ -598,12 +603,12 @@
         if (!res.ok) {
           const err = await res.json();
           progressMessage.textContent = `Error: ${err.error}`;
-          progressMessage.style.color = "#f44336";
+          progressMessage.style.color = "var(--color-bad)";
           stopProgressPolling();
         }
       } catch (err) {
         progressMessage.textContent = `Error: ${err.message}`;
-        progressMessage.style.color = "#f44336";
+        progressMessage.style.color = "var(--color-bad)";
         stopProgressPolling();
       }
     });
@@ -775,17 +780,17 @@
         ? new Date(detector.created_at * 1000).toLocaleDateString()
         : "";
       return `
-      <div style="background: #2a2d3a; padding: 12px; margin-bottom: 8px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+      <div style="background: var(--border); padding: 12px; margin-bottom: 8px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; gap: 12px;">
         <div style="flex: 1; min-width: 0;">
-          <div style="font-weight: bold; color: #7c8aff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(detector.name)}</div>
-          <div style="font-size: 0.8rem; color: #888; margin-top: 3px; display: flex; align-items: center; gap: 10px;">
-            <span style="background: #1a1d27; border: 1px solid #3a3d50; border-radius: 3px; padding: 1px 6px; white-space: nowrap;">${icon} ${detector.media_type}</span>
+          <div style="font-weight: bold; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(detector.name)}</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 3px; display: flex; align-items: center; gap: 10px;">
+            <span style="background: var(--bg-surface); border: 1px solid var(--bg-secondary-btn); border-radius: 3px; padding: 1px 6px; white-space: nowrap;">${icon} ${detector.media_type}</span>
             <span>threshold&nbsp;${detector.threshold.toFixed(2)}</span>
             ${created ? `<span>${created}</span>` : ""}
           </div>
         </div>
         <div style="display: flex; gap: 6px; flex-shrink: 0;">
-          <button onclick="renameDetector('${escapeHtml(detector.name)}')" style="padding: 4px 10px; background: #3a3d50; color: #ccc; border: 1px solid #4a4d60; border-radius: 4px; cursor: pointer; font-size: 0.78rem;">Rename</button>
+          <button onclick="renameDetector('${escapeHtml(detector.name)}')" style="padding: 4px 10px; background: var(--bg-secondary-btn); color: var(--text-btn-secondary); border: 1px solid var(--border-secondary); border-radius: 4px; cursor: pointer; font-size: 0.78rem;">Rename</button>
           <button onclick="deleteDetector('${escapeHtml(detector.name)}')" style="padding: 4px 10px; background: #c0392b; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 0.78rem;">Delete</button>
         </div>
       </div>`;
@@ -848,7 +853,7 @@
   function setFavAddStatus(msg, color) {
     if (favAddStatus) {
       favAddStatus.textContent = msg;
-      favAddStatus.style.color = color || "#aaa";
+      favAddStatus.style.color = color || "var(--text-secondary)";
     }
   }
 
@@ -1082,7 +1087,7 @@
 
     // Display summary
     autodetectSummary.innerHTML = `
-      <p style="color: #e0e0e0;">
+      <p style="color: var(--text-primary);">
         <strong>Media Type:</strong> ${data.media_type} &nbsp;|&nbsp;
         <strong>Detectors Run:</strong> ${data.detectors_run} &nbsp;|&nbsp;
         <strong>Good Results:</strong> ${allHits.length}
@@ -1091,25 +1096,25 @@
 
     // Display results as a table
     if (allHits.length === 0) {
-      autodetectResults.innerHTML = '<p style="color: #888;">No positive hits found.</p>';
+      autodetectResults.innerHTML = '<p style="color: var(--text-muted);">No positive hits found.</p>';
     } else {
       let tableHtml = `<table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">`;
-      tableHtml += `<thead><tr style="border-bottom: 1px solid #3a3d50;">`;
-      tableHtml += `<th style="text-align: left; padding: 8px; color: #7c8aff;">Origin</th>`;
-      tableHtml += `<th style="text-align: left; padding: 8px; color: #7c8aff;">Name</th>`;
-      tableHtml += `<th style="text-align: left; padding: 8px; color: #7c8aff;">MD5</th>`;
-      tableHtml += `<th style="text-align: left; padding: 8px; color: #7c8aff;">Filename</th>`;
+      tableHtml += `<thead><tr style="border-bottom: 1px solid var(--bg-secondary-btn);">`;
+      tableHtml += `<th style="text-align: left; padding: 8px; color: var(--accent);">Origin</th>`;
+      tableHtml += `<th style="text-align: left; padding: 8px; color: var(--accent);">Name</th>`;
+      tableHtml += `<th style="text-align: left; padding: 8px; color: var(--accent);">MD5</th>`;
+      tableHtml += `<th style="text-align: left; padding: 8px; color: var(--accent);">Filename</th>`;
       tableHtml += `</tr></thead><tbody>`;
       for (const hit of allHits) {
         const origin = escapeHtml(formatOrigin(hit));
         const name = escapeHtml(hit.origin_name || hit.filename || "");
         const md5 = escapeHtml(hit.md5 || "");
         const filename = escapeHtml(hit.filename || "");
-        tableHtml += `<tr style="border-bottom: 1px solid #2a2d3a;">`;
-        tableHtml += `<td style="padding: 6px 8px; color: #aaa;">${origin}</td>`;
-        tableHtml += `<td style="padding: 6px 8px; color: #e0e0e0;">${name}</td>`;
-        tableHtml += `<td style="padding: 6px 8px; color: #888; font-family: monospace; font-size: 0.75rem;">${md5}</td>`;
-        tableHtml += `<td style="padding: 6px 8px; color: #aaa;">${filename}</td>`;
+        tableHtml += `<tr style="border-bottom: 1px solid var(--border);">`;
+        tableHtml += `<td style="padding: 6px 8px; color: var(--text-secondary);">${origin}</td>`;
+        tableHtml += `<td style="padding: 6px 8px; color: var(--text-primary);">${name}</td>`;
+        tableHtml += `<td style="padding: 6px 8px; color: var(--text-muted); font-family: monospace; font-size: 0.75rem;">${md5}</td>`;
+        tableHtml += `<td style="padding: 6px 8px; color: var(--text-secondary);">${filename}</td>`;
         tableHtml += `</tr>`;
       }
       tableHtml += `</tbody></table>`;
@@ -1607,12 +1612,12 @@
     // Render media player based on media type
     let playerHTML = '';
     if (mediaType === "video") {
-      playerHTML = `<video controls loop autoplay src="/api/clips/${c.id}/video" id="clip-video" style="width: 600px; max-height: 400px; border: 1px solid #2a2d3a; border-radius: 8px; background: #1a1d27;"></video>`;
+      playerHTML = `<video controls loop autoplay src="/api/clips/${c.id}/video" id="clip-video" style="width: 600px; max-height: 400px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-surface);"></video>`;
     } else if (mediaType === "image") {
-      playerHTML = `<div style="flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center;"><img src="/api/clips/${c.id}/image" id="clip-image" style="max-width: 100%; max-height: 100%; object-fit: contain; border: 1px solid #2a2d3a; border-radius: 8px; background: #1a1d27;"></div>`;
+      playerHTML = `<div style="flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center;"><img src="/api/clips/${c.id}/image" id="clip-image" style="max-width: 100%; max-height: 100%; object-fit: contain; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-surface);"></div>`;
     } else if (mediaType === "paragraph") {
       playerHTML = `
-        <div id="clip-paragraph" style="max-width: 600px; max-height: 400px; overflow-y: auto; padding: 16px; border: 1px solid #2a2d3a; border-radius: 8px; background: #1a1d27; white-space: pre-wrap; line-height: 1.6; text-align: left;">
+        <div id="clip-paragraph" style="max-width: 600px; max-height: 400px; overflow-y: auto; padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-surface); white-space: pre-wrap; line-height: 1.6; text-align: left;">
           Loading...
         </div>`;
     } else {
@@ -1736,7 +1741,7 @@
     const height = canvas.height;
 
     // Clear canvas
-    ctx.fillStyle = "#1a1d27";
+    ctx.fillStyle = themeColor("--bg-surface");
     ctx.fillRect(0, 0, width, height);
 
     try {
@@ -1754,7 +1759,7 @@
       const amp = height / 2;
 
       // Draw waveform
-      ctx.strokeStyle = "#7c8aff";
+      ctx.strokeStyle = themeColor("--accent");
       ctx.lineWidth = 1;
       ctx.beginPath();
 
@@ -1781,7 +1786,7 @@
       ctx.stroke();
 
       // Draw center line
-      ctx.strokeStyle = "#2a2d3a";
+      ctx.strokeStyle = themeColor("--border");
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(0, height / 2);
@@ -1791,7 +1796,7 @@
     } catch (error) {
       console.error("Error drawing waveform:", error);
       // Draw error message
-      ctx.fillStyle = "#f44336";
+      ctx.fillStyle = themeColor("--color-bad");
       ctx.font = "12px monospace";
       ctx.textAlign = "center";
       ctx.fillText("Unable to load waveform", width / 2, height / 2);
@@ -1943,17 +1948,17 @@
     labelImporterList.style.display = "";
 
     if (importers.length === 0) {
-      labelImporterList.innerHTML = '<p style="color:#888;">No label importers available.</p>';
+      labelImporterList.innerHTML = '<p style="color:var(--text-muted);">No label importers available.</p>';
     } else {
       labelImporterList.innerHTML = importers.map(imp => `
         <div class="label-importer-option" data-name="${escapeHtml(imp.name)}" style="
-          background:#2a2d3a; border:1px solid #3a3d50; border-radius:6px;
+          background:var(--border); border:1px solid var(--bg-secondary-btn); border-radius:6px;
           padding:12px 16px; margin-bottom:10px; cursor:pointer;
           display:flex; align-items:center; gap:12px;">
           <span style="font-size:1.5rem;">${escapeHtml(imp.icon || '🏷️')}</span>
           <div>
-            <div style="font-weight:bold; color:#e0e0e0;">${escapeHtml(imp.display_name)}</div>
-            <div style="font-size:0.8rem; color:#888; margin-top:2px;">${escapeHtml(imp.description)}</div>
+            <div style="font-weight:bold; color:var(--text-primary);">${escapeHtml(imp.display_name)}</div>
+            <div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">${escapeHtml(imp.description)}</div>
           </div>
         </div>
       `).join("");
@@ -1971,17 +1976,17 @@
   function _showMissingElementsPrompt(statusEl, result, formEl) {
     const n = result.missing_count;
     const promptDiv = document.createElement("div");
-    promptDiv.style.cssText = "margin-top:14px;padding:14px;background:#2a2d3a;border:1px solid #3a3d50;border-radius:6px;";
+    promptDiv.style.cssText = "margin-top:14px;padding:14px;background:var(--border);border:1px solid var(--bg-secondary-btn);border-radius:6px;";
     promptDiv.innerHTML = `
-      <div style="color:#e0e0e0;margin-bottom:10px;font-size:0.9rem;">
+      <div style="color:var(--text-primary);margin-bottom:10px;font-size:0.9rem;">
         <strong>${n}</strong> element(s) from the labelset were not found in your dataset.
         Import them from their origins?
       </div>
       <div style="display:flex;gap:10px;">
-        <button id="missing-import-btn" style="flex:1;padding:8px;background:#7c8aff;border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:0.85rem;">Import clips</button>
-        <button id="missing-skip-btn" style="flex:1;padding:8px;background:#3a3d50;border:none;border-radius:4px;color:#ccc;cursor:pointer;font-size:0.85rem;">Skip</button>
+        <button id="missing-import-btn" style="flex:1;padding:8px;background:var(--accent);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:0.85rem;">Import clips</button>
+        <button id="missing-skip-btn" style="flex:1;padding:8px;background:var(--bg-secondary-btn);border:none;border-radius:4px;color:var(--text-btn-secondary);cursor:pointer;font-size:0.85rem;">Skip</button>
       </div>
-      <div id="missing-status" style="min-height:1.4em;font-size:0.85rem;color:#888;margin-top:8px;"></div>
+      <div id="missing-status" style="min-height:1.4em;font-size:0.85rem;color:var(--text-muted);margin-top:8px;"></div>
     `;
     // Insert after the status element
     statusEl.parentNode.appendChild(promptDiv);
@@ -2001,7 +2006,7 @@
       importBtn.disabled = true;
       importBtn.style.opacity = "0.5";
       missingStatus.textContent = "Ingesting clips from origins\u2026";
-      missingStatus.style.color = "#888";
+      missingStatus.style.color = "var(--text-muted)";
 
       try {
         const ingestRes = await fetch("/api/label-importers/ingest-missing", {
@@ -2012,7 +2017,7 @@
         const ingestResult = await ingestRes.json();
         if (ingestRes.ok) {
           missingStatus.textContent = ingestResult.message;
-          missingStatus.style.color = "#4caf50";
+          missingStatus.style.color = "var(--color-good)";
           await fetchVotes();
           const totalApplied = result.applied + (ingestResult.applied || 0);
           setTimeout(() => {
@@ -2022,13 +2027,13 @@
           }, 1500);
         } else {
           missingStatus.textContent = ingestResult.error || "Ingest failed";
-          missingStatus.style.color = "#f44336";
+          missingStatus.style.color = "var(--color-bad)";
           importBtn.disabled = false;
           importBtn.style.opacity = "1";
         }
       } catch (err) {
         missingStatus.textContent = `Error: ${err.message}`;
-        missingStatus.style.color = "#f44336";
+        missingStatus.style.color = "var(--color-bad)";
         importBtn.disabled = false;
         importBtn.style.opacity = "1";
       }
@@ -2039,14 +2044,14 @@
     labelImporterList.style.display = "none";
     labelImporterBack.style.display = "inline-block";
 
-    const inputStyle = "width:100%;padding:8px;background:#252940;border:1px solid #2a2d3a;border-radius:4px;color:#e0e0e0;box-sizing:border-box;";
-    let html = `<h3 style="margin-bottom:14px;color:#e0e0e0;">${escapeHtml(importer.display_name)}</h3>`;
+    const inputStyle = "width:100%;padding:8px;background:var(--bg-hover);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);box-sizing:border-box;";
+    let html = `<h3 style="margin-bottom:14px;color:var(--text-primary);">${escapeHtml(importer.display_name)}</h3>`;
     html += `<form id="label-imp-form">`;
     for (const field of importer.fields) {
       html += `<div style="margin-bottom:14px;">`;
-      html += `<label style="display:block;margin-bottom:5px;color:#aaa;font-size:0.85rem;">${escapeHtml(field.label)}${field.required ? " *" : ""}</label>`;
+      html += `<label style="display:block;margin-bottom:5px;color:var(--text-secondary);font-size:0.85rem;">${escapeHtml(field.label)}${field.required ? " *" : ""}</label>`;
       if (field.field_type === "file") {
-        html += `<input type="file" name="${escapeHtml(field.key)}" accept="${escapeHtml(field.accept)}" style="color:#e0e0e0;width:100%;" ${field.required ? "required" : ""}>`;
+        html += `<input type="file" name="${escapeHtml(field.key)}" accept="${escapeHtml(field.accept)}" style="color:var(--text-primary);width:100%;" ${field.required ? "required" : ""}>`;
       } else if (field.field_type === "select") {
         html += `<select name="${escapeHtml(field.key)}" style="${inputStyle}">`;
         for (const opt of field.options) {
@@ -2059,12 +2064,12 @@
         html += `<input type="${itype}" name="${escapeHtml(field.key)}" value="${escapeHtml(field.default)}" placeholder="${placeholder}" style="${inputStyle}" ${field.required ? "required" : ""}>`;
       }
       if (field.description) {
-        html += `<div style="margin-top:4px;font-size:0.75rem;color:#666;">${escapeHtml(field.description)}</div>`;
+        html += `<div style="margin-top:4px;font-size:0.75rem;color:var(--text-dim);">${escapeHtml(field.description)}</div>`;
       }
       html += `</div>`;
     }
-    html += `<div id="label-imp-status" style="min-height:1.4em;font-size:0.85rem;color:#888;margin-bottom:10px;"></div>`;
-    html += `<button type="submit" style="width:100%;padding:10px;background:#7c8aff;border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:0.9rem;">Import</button>`;
+    html += `<div id="label-imp-status" style="min-height:1.4em;font-size:0.85rem;color:var(--text-muted);margin-bottom:10px;"></div>`;
+    html += `<button type="submit" style="width:100%;padding:10px;background:var(--accent);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:0.9rem;">Import</button>`;
     html += `</form>`;
 
     labelImporterFormDiv.innerHTML = html;
@@ -2075,7 +2080,7 @@
     labelImporterFormDiv.querySelector("#label-imp-form").addEventListener("submit", async (e) => {
       e.preventDefault();
       statusEl.textContent = "Importing\u2026";
-      statusEl.style.color = "#888";
+      statusEl.style.color = "var(--text-muted)";
 
       const formEl = e.target;
       const hasFiles = importer.fields.some(f => f.field_type === "file");
@@ -2099,7 +2104,7 @@
         const result = await res.json();
         if (res.ok) {
           statusEl.textContent = `Applied ${result.applied}, skipped ${result.skipped}.`;
-          statusEl.style.color = "#4caf50";
+          statusEl.style.color = "var(--color-good)";
           await fetchVotes();
 
           if (result.missing_count > 0) {
@@ -2114,11 +2119,11 @@
           }
         } else {
           statusEl.textContent = result.error || "Import failed";
-          statusEl.style.color = "#f44336";
+          statusEl.style.color = "var(--color-bad)";
         }
       } catch (err) {
         statusEl.textContent = `Error: ${err.message}`;
-        statusEl.style.color = "#f44336";
+        statusEl.style.color = "var(--color-bad)";
       }
     });
   }
@@ -2160,17 +2165,17 @@
     processorImporterList.style.display = "";
 
     if (importers.length === 0) {
-      processorImporterList.innerHTML = '<p style="color:#888;">No processor importers available.</p>';
+      processorImporterList.innerHTML = '<p style="color:var(--text-muted);">No processor importers available.</p>';
     } else {
       processorImporterList.innerHTML = importers.map(imp => `
         <div class="processor-importer-option" data-name="${escapeHtml(imp.name)}" style="
-          background:#2a2d3a; border:1px solid #3a3d50; border-radius:6px;
+          background:var(--border); border:1px solid var(--bg-secondary-btn); border-radius:6px;
           padding:12px 16px; margin-bottom:10px; cursor:pointer;
           display:flex; align-items:center; gap:12px;">
           <span style="font-size:1.5rem;">${escapeHtml(imp.icon || '\u{1F9E9}')}</span>
           <div>
-            <div style="font-weight:bold; color:#e0e0e0;">${escapeHtml(imp.display_name)}</div>
-            <div style="font-size:0.8rem; color:#888; margin-top:2px;">${escapeHtml(imp.description)}</div>
+            <div style="font-weight:bold; color:var(--text-primary);">${escapeHtml(imp.display_name)}</div>
+            <div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">${escapeHtml(imp.description)}</div>
           </div>
         </div>
       `).join("");
@@ -2189,20 +2194,20 @@
     processorImporterList.style.display = "none";
     processorImporterBack.style.display = "inline-block";
 
-    const inputStyle = "width:100%;padding:8px;background:#252940;border:1px solid #2a2d3a;border-radius:4px;color:#e0e0e0;box-sizing:border-box;";
-    let html = `<h3 style="margin-bottom:14px;color:#e0e0e0;">${escapeHtml(importer.display_name)}</h3>`;
+    const inputStyle = "width:100%;padding:8px;background:var(--bg-hover);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);box-sizing:border-box;";
+    let html = `<h3 style="margin-bottom:14px;color:var(--text-primary);">${escapeHtml(importer.display_name)}</h3>`;
     html += `<form id="proc-imp-form">`;
     // Name field (always required)
     html += `<div style="margin-bottom:14px;">`;
-    html += `<label style="display:block;margin-bottom:5px;color:#aaa;font-size:0.85rem;">Detector Name *</label>`;
+    html += `<label style="display:block;margin-bottom:5px;color:var(--text-secondary);font-size:0.85rem;">Detector Name *</label>`;
     html += `<input type="text" name="name" placeholder="e.g. Dog Barks" style="${inputStyle}" required>`;
-    html += `<div style="margin-top:4px;font-size:0.75rem;color:#666;">Name for the imported detector.</div>`;
+    html += `<div style="margin-top:4px;font-size:0.75rem;color:var(--text-dim);">Name for the imported detector.</div>`;
     html += `</div>`;
     for (const field of importer.fields) {
       html += `<div style="margin-bottom:14px;">`;
-      html += `<label style="display:block;margin-bottom:5px;color:#aaa;font-size:0.85rem;">${escapeHtml(field.label)}${field.required ? " *" : ""}</label>`;
+      html += `<label style="display:block;margin-bottom:5px;color:var(--text-secondary);font-size:0.85rem;">${escapeHtml(field.label)}${field.required ? " *" : ""}</label>`;
       if (field.field_type === "file") {
-        html += `<input type="file" name="${escapeHtml(field.key)}" accept="${escapeHtml(field.accept)}" style="color:#e0e0e0;width:100%;" ${field.required ? "required" : ""}>`;
+        html += `<input type="file" name="${escapeHtml(field.key)}" accept="${escapeHtml(field.accept)}" style="color:var(--text-primary);width:100%;" ${field.required ? "required" : ""}>`;
       } else if (field.field_type === "select") {
         html += `<select name="${escapeHtml(field.key)}" style="${inputStyle}">`;
         for (const opt of field.options) {
@@ -2215,12 +2220,12 @@
         html += `<input type="${itype}" name="${escapeHtml(field.key)}" value="${escapeHtml(field.default)}" placeholder="${placeholder}" style="${inputStyle}" ${field.required ? "required" : ""}>`;
       }
       if (field.description) {
-        html += `<div style="margin-top:4px;font-size:0.75rem;color:#666;">${escapeHtml(field.description)}</div>`;
+        html += `<div style="margin-top:4px;font-size:0.75rem;color:var(--text-dim);">${escapeHtml(field.description)}</div>`;
       }
       html += `</div>`;
     }
-    html += `<div id="proc-imp-status" style="min-height:1.4em;font-size:0.85rem;color:#888;margin-bottom:10px;"></div>`;
-    html += `<button type="submit" style="width:100%;padding:10px;background:#7c8aff;border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:0.9rem;">Import</button>`;
+    html += `<div id="proc-imp-status" style="min-height:1.4em;font-size:0.85rem;color:var(--text-muted);margin-bottom:10px;"></div>`;
+    html += `<button type="submit" style="width:100%;padding:10px;background:var(--accent);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:0.9rem;">Import</button>`;
     html += `</form>`;
 
     processorImporterFormDiv.innerHTML = html;
@@ -2231,7 +2236,7 @@
     processorImporterFormDiv.querySelector("#proc-imp-form").addEventListener("submit", async (e) => {
       e.preventDefault();
       statusEl.textContent = "Importing\u2026";
-      statusEl.style.color = "#888";
+      statusEl.style.color = "var(--text-muted)";
 
       const formEl = e.target;
       const hasFiles = importer.fields.some(f => f.field_type === "file");
@@ -2257,7 +2262,7 @@
           let msg = `Imported "${result.name}" (${result.media_type})`;
           if (result.loaded) msg += `, ${result.loaded} files loaded`;
           statusEl.textContent = msg;
-          statusEl.style.color = "#4caf50";
+          statusEl.style.color = "var(--color-good)";
           setTimeout(() => {
             processorImporterModal.classList.remove("show");
             if (menuFavoritesStatus) {
@@ -2267,11 +2272,11 @@
           }, 1500);
         } else {
           statusEl.textContent = result.error || "Import failed";
-          statusEl.style.color = "#f44336";
+          statusEl.style.color = "var(--color-bad)";
         }
       } catch (err) {
         statusEl.textContent = `Error: ${err.message}`;
-        statusEl.style.color = "#f44336";
+        statusEl.style.color = "var(--color-bad)";
       }
     });
   }
@@ -2447,7 +2452,7 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (!errorCostData || errorCostData.length === 0) {
-      ctx.fillStyle = "#888";
+      ctx.fillStyle = themeColor("--text-muted");
       ctx.font = "14px sans-serif";
       ctx.fillText("No data available", 20, canvas.height / 2);
       return;
@@ -2471,7 +2476,7 @@
     const yScale = (val) => padding.top + chartHeight - ((val - minCost) / (maxCost - minCost || 1)) * chartHeight;
 
     // Draw axes
-    ctx.strokeStyle = "#2a2d3a";
+    ctx.strokeStyle = themeColor("--border");
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(padding.left, padding.top);
@@ -2480,7 +2485,7 @@
     ctx.stroke();
 
     // Draw grid lines
-    ctx.strokeStyle = "#1e2030";
+    ctx.strokeStyle = themeColor("--border-subtle");
     ctx.lineWidth = 1;
     for (let i = 1; i <= 5; i++) {
       const y = padding.top + (chartHeight * i) / 5;
@@ -2491,7 +2496,7 @@
     }
 
     // Draw line
-    ctx.strokeStyle = "#7c8aff";
+    ctx.strokeStyle = themeColor("--accent");
     ctx.lineWidth = 2;
     ctx.beginPath();
     for (let i = 0; i < errorCostData.length; i++) {
@@ -2506,7 +2511,7 @@
     ctx.stroke();
 
     // Draw points
-    ctx.fillStyle = "#7c8aff";
+    ctx.fillStyle = themeColor("--accent");
     for (let i = 0; i < errorCostData.length; i++) {
       const x = xScale(numLabels[i]);
       const y = yScale(errorCosts[i]);
@@ -2516,7 +2521,7 @@
     }
 
     // Labels
-    ctx.fillStyle = "#aaa";
+    ctx.fillStyle = themeColor("--text-secondary");
     ctx.font = "12px sans-serif";
     ctx.textAlign = "center";
     ctx.fillText("Number of Labels", canvas.width / 2, canvas.height - 10);
@@ -2545,7 +2550,7 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (!stabilityData || stabilityData.length === 0) {
-      ctx.fillStyle = "#888";
+      ctx.fillStyle = themeColor("--text-muted");
       ctx.font = "14px sans-serif";
       ctx.fillText("No data available", 20, canvas.height / 2);
       return;
@@ -2554,7 +2559,7 @@
     // Extract data (skip first entry since it has no previous to compare)
     const dataToPlot = stabilityData.slice(1);
     if (dataToPlot.length === 0) {
-      ctx.fillStyle = "#888";
+      ctx.fillStyle = themeColor("--text-muted");
       ctx.font = "14px sans-serif";
       ctx.fillText("Need more labels for stability analysis", 20, canvas.height / 2);
       return;
@@ -2576,7 +2581,7 @@
     const yScale = (val) => padding.top + chartHeight - (val / maxFlips) * chartHeight;
 
     // Draw axes
-    ctx.strokeStyle = "#2a2d3a";
+    ctx.strokeStyle = themeColor("--border");
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(padding.left, padding.top);
@@ -2585,7 +2590,7 @@
     ctx.stroke();
 
     // Draw grid lines
-    ctx.strokeStyle = "#1e2030";
+    ctx.strokeStyle = themeColor("--border-subtle");
     ctx.lineWidth = 1;
     for (let i = 1; i <= 5; i++) {
       const y = padding.top + (chartHeight * i) / 5;
@@ -2596,7 +2601,7 @@
     }
 
     // Draw line
-    ctx.strokeStyle = "#4caf50";
+    ctx.strokeStyle = themeColor("--color-good");
     ctx.lineWidth = 2;
     ctx.beginPath();
     for (let i = 0; i < dataToPlot.length; i++) {
@@ -2611,7 +2616,7 @@
     ctx.stroke();
 
     // Draw points
-    ctx.fillStyle = "#4caf50";
+    ctx.fillStyle = themeColor("--color-good");
     for (let i = 0; i < dataToPlot.length; i++) {
       const x = xScale(numLabels[i]);
       const y = yScale(numFlips[i]);
@@ -2621,7 +2626,7 @@
     }
 
     // Labels
-    ctx.fillStyle = "#aaa";
+    ctx.fillStyle = themeColor("--text-secondary");
     ctx.font = "12px sans-serif";
     ctx.textAlign = "center";
     ctx.fillText("Number of Labels", canvas.width / 2, canvas.height - 10);
@@ -2707,6 +2712,39 @@
     }, 500);
   }
 
+  // ---- Theme toggle ----
+
+  const themeToggleCheckbox = document.getElementById("theme-toggle-checkbox");
+  const themeLabel = document.getElementById("theme-label");
+
+  function applyTheme(theme) {
+    if (theme === "light") {
+      document.documentElement.setAttribute("data-theme", "light");
+      if (themeToggleCheckbox) themeToggleCheckbox.checked = true;
+      if (themeLabel) themeLabel.textContent = "Light Mode";
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+      if (themeToggleCheckbox) themeToggleCheckbox.checked = false;
+      if (themeLabel) themeLabel.textContent = "Light Mode";
+    }
+  }
+
+  function saveTheme(theme) {
+    fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ theme: theme }),
+    }).catch(() => {});
+  }
+
+  if (themeToggleCheckbox) {
+    themeToggleCheckbox.addEventListener("change", () => {
+      const theme = themeToggleCheckbox.checked ? "light" : "dark";
+      applyTheme(theme);
+      saveTheme(theme);
+    });
+  }
+
   async function loadSettings() {
     try {
       const res = await fetch("/api/settings");
@@ -2716,6 +2754,9 @@
         audioVolume = data.volume;
         const audioEl = document.getElementById("clip-audio");
         if (audioEl) audioEl.volume = audioVolume;
+      }
+      if (data.theme) {
+        applyTheme(data.theme);
       }
     } catch (_) {
       // Settings not available yet; use defaults

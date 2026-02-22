@@ -36,6 +36,7 @@ SETTINGS_PATH: Path = DATA_DIR / "settings.json"
 
 _DEFAULTS: dict[str, Any] = {
     "volume": 1.0,
+    "theme": "dark",
     "favorite_processors": [],
 }
 
@@ -94,6 +95,20 @@ def set_volume(value: float) -> None:
     _save(s)
 
 
+def get_theme() -> str:
+    """Return the persisted theme ('dark' or 'light')."""
+    return str(_ensure_loaded().get("theme", _DEFAULTS["theme"]))
+
+
+def set_theme(value: str) -> None:
+    """Set and persist the theme.  Must be 'dark' or 'light'."""
+    if value not in ("dark", "light"):
+        raise ValueError(f"Invalid theme: {value!r}")
+    s = _ensure_loaded()
+    s["theme"] = value
+    _save(s)
+
+
 def get_favorite_processors() -> list[dict[str, Any]]:
     """Return the list of favorite processor recipes."""
     return list(_ensure_loaded().get("favorite_processors", []))
@@ -143,7 +158,7 @@ def to_cli_command(entry: dict[str, Any]) -> str:
     parts = [
         "python app.py --import-processor",
         f"--processor-importer {entry['processor_importer']}",
-        f"--processor-name \"{entry['processor_name']}\"",
+        f'--processor-name "{entry["processor_name"]}"',
     ]
     for key, value in entry.get("field_values", {}).items():
         flag = f"--{key.replace('_', '-')}"

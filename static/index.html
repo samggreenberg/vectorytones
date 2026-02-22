@@ -40,6 +40,16 @@
         <div class="burger-item" id="menu-favorites-autodetect">Run Auto-Detect</div>
         <div class="burger-status" id="menu-favorites-status"></div>
       </div>
+      <div class="burger-section">
+        <div class="burger-section-title">Appearance</div>
+        <div class="theme-toggle">
+          <span class="theme-toggle-label" id="theme-label">Light Mode</span>
+          <label class="theme-switch">
+            <input type="checkbox" id="theme-toggle-checkbox">
+            <span class="theme-switch-slider"></span>
+          </label>
+        </div>
+      </div>
     </div>
   </div>
   <h1>VTSearch</h1>
@@ -63,7 +73,7 @@
         <input type="text" id="text-sort" placeholder='e.g. "high pitched beep"'>
       </div>
       <div id="load-sort-wrap" style="display:none">
-        <button id="load-detector-btn" style="width:100%; padding:6px; background:#7c8aff; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:0.85rem;">Load Detector</button>
+        <button id="load-detector-btn" style="width:100%; padding:6px; background:var(--accent); color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:0.85rem;">Load Detector</button>
         <input type="file" id="load-detector-file" accept=".json" style="display:none">
       </div>
       <span class="sort-label" style="margin-top:8px">Select</span>
@@ -73,11 +83,11 @@
       </div>
       <span class="sort-label" style="margin-top:8px">Inclusion</span>
       <div style="display:flex; align-items:center; gap:8px; margin-top:4px">
-        <span style="font-size:0.7rem; color:#888">-10</span>
-        <input type="range" id="inclusion-slider" min="-10" max="10" value="0" step="1" style="flex:1; accent-color:#7c8aff">
-        <span style="font-size:0.7rem; color:#888">+10</span>
+        <span style="font-size:0.7rem; color:var(--text-muted)">-10</span>
+        <input type="range" id="inclusion-slider" min="-10" max="10" value="0" step="1" style="flex:1; accent-color:var(--accent)">
+        <span style="font-size:0.7rem; color:var(--text-muted)">+10</span>
       </div>
-      <div style="text-align:center; font-size:0.75rem; color:#aaa; margin-top:2px">
+      <div style="text-align:center; font-size:0.75rem; color:var(--text-secondary); margin-top:2px">
         <span id="inclusion-value">0</span>
       </div>
       <div id="sort-status" class="sort-status"></div>
@@ -162,14 +172,14 @@
       </div>
       <div class="progress-chart">
         <h3>Error Cost Over Time</h3>
-        <p style="font-size: 0.8rem; color: #888; margin-bottom: 8px;">
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">
           Lower is better. When the line levels out, you're probably not making progress.
         </p>
         <canvas id="error-cost-chart" width="700" height="250"></canvas>
       </div>
       <div class="progress-chart">
         <h3>Prediction Stability</h3>
-        <p style="font-size: 0.8rem; color: #888; margin-bottom: 8px;">
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">
           Shows how many unlabeled clips change prediction at each step. When this stabilizes near zero, you're probably not making progress.
         </p>
         <canvas id="stability-chart" width="700" height="250"></canvas>
@@ -191,23 +201,23 @@
     </div>
     <div class="modal-body">
       <!-- Add Detector Section -->
-      <div style="background: #14161e; border: 1px solid #2a2d3a; border-radius: 6px; padding: 16px; margin-bottom: 20px;">
-        <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #666; margin-bottom: 10px;">Add Detector</div>
+      <div style="background: var(--bg-panel); border: 1px solid var(--border); border-radius: 6px; padding: 16px; margin-bottom: 20px;">
+        <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); margin-bottom: 10px;">Add Detector</div>
         <div style="margin-bottom: 10px;">
-          <label style="font-size: 0.78rem; color: #888; display: block; margin-bottom: 4px;">Name (optional — defaults to filename)</label>
-          <input type="text" id="fav-add-name" placeholder="e.g. Dog Barks" style="width: 100%; padding: 6px 8px; border: 1px solid #2a2d3a; border-radius: 4px; background: #1a1d27; color: #e0e0e0; font-size: 0.85rem; outline: none;">
+          <label style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Name (optional — defaults to filename)</label>
+          <input type="text" id="fav-add-name" placeholder="e.g. Dog Barks" style="width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-surface); color: var(--text-primary); font-size: 0.85rem; outline: none;">
         </div>
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-          <button id="fav-add-from-votes-btn" style="flex: 1; padding: 8px 12px; background: #7c8aff; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">From Current Labels</button>
-          <button id="fav-add-from-detector-btn" style="flex: 1; padding: 8px 12px; background: #3a3d50; color: #ccc; border: 1px solid #4a4d60; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">From Detector File (.json)</button>
-          <button id="fav-add-from-labels-btn" style="flex: 1; padding: 8px 12px; background: #3a3d50; color: #ccc; border: 1px solid #4a4d60; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">From Label File (.json)</button>
+          <button id="fav-add-from-votes-btn" style="flex: 1; padding: 8px 12px; background: var(--accent); color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">From Current Labels</button>
+          <button id="fav-add-from-detector-btn" style="flex: 1; padding: 8px 12px; background: var(--bg-secondary-btn); color: var(--text-btn-secondary); border: 1px solid var(--border-secondary); border-radius: 4px; cursor: pointer; font-size: 0.8rem;">From Detector File (.json)</button>
+          <button id="fav-add-from-labels-btn" style="flex: 1; padding: 8px 12px; background: var(--bg-secondary-btn); color: var(--text-btn-secondary); border: 1px solid var(--border-secondary); border-radius: 4px; cursor: pointer; font-size: 0.8rem;">From Label File (.json)</button>
         </div>
-        <div id="fav-add-status" style="font-size: 0.78rem; color: #888; margin-top: 8px; min-height: 1.2em;"></div>
+        <div id="fav-add-status" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 8px; min-height: 1.2em;"></div>
       </div>
       <!-- Saved Detectors List -->
-      <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #666; margin-bottom: 8px;">Saved Detectors</div>
+      <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); margin-bottom: 8px;">Saved Detectors</div>
       <div id="favorites-list">
-        <p style="color: #888;">No favorite detectors saved yet.</p>
+        <p style="color: var(--text-muted);">No favorite detectors saved yet.</p>
       </div>
     </div>
   </div>
@@ -227,8 +237,8 @@
       <div id="autodetect-summary" style="margin-bottom: 16px;"></div>
       <div id="autodetect-results" style="max-height: 500px; overflow-y: auto;"></div>
       <div style="margin-top: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-        <label style="color: #aaa; font-size: 0.85rem;">Column:
-          <select id="copy-column-select" style="padding: 4px 8px; background: #1a1d27; color: #e0e0e0; border: 1px solid #2a2d3a; border-radius: 4px; font-size: 0.85rem; margin-left: 4px;">
+        <label style="color: var(--text-secondary); font-size: 0.85rem;">Column:
+          <select id="copy-column-select" style="padding: 4px 8px; background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; font-size: 0.85rem; margin-left: 4px;">
             <option value="origin+name">origin+name</option>
             <option value="name">name</option>
             <option value="md5">md5</option>
@@ -236,15 +246,15 @@
             <option value="origin">origin</option>
           </select>
         </label>
-        <label style="color: #aaa; font-size: 0.85rem;">Separator:
-          <select id="copy-separator-select" style="padding: 4px 8px; background: #1a1d27; color: #e0e0e0; border: 1px solid #2a2d3a; border-radius: 4px; font-size: 0.85rem; margin-left: 4px;">
+        <label style="color: var(--text-secondary); font-size: 0.85rem;">Separator:
+          <select id="copy-separator-select" style="padding: 4px 8px; background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; font-size: 0.85rem; margin-left: 4px;">
             <option value="newline">newline</option>
             <option value=",">,</option>
             <option value="tab">tab</option>
             <option value="space">space</option>
           </select>
         </label>
-        <button id="copy-results-btn" style="padding: 8px 16px; background: #7c8aff; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Copy To Clipboard</button>
+        <button id="copy-results-btn" style="padding: 8px 16px; background: var(--accent); color: #fff; border: none; border-radius: 4px; cursor: pointer;">Copy To Clipboard</button>
       </div>
     </div>
   </div>
@@ -257,9 +267,9 @@
       <h2>Running Auto-Detect</h2>
     </div>
     <div class="modal-body">
-      <div id="autodetect-progress-text" style="margin-bottom: 16px; color: #e0e0e0;">Initializing...</div>
-      <div style="background: #2a2d3a; border-radius: 8px; overflow: hidden; height: 24px;">
-        <div id="autodetect-progress-bar" style="background: #7c8aff; height: 100%; width: 0%; transition: width 0.3s;"></div>
+      <div id="autodetect-progress-text" style="margin-bottom: 16px; color: var(--text-primary);">Initializing...</div>
+      <div style="background: var(--border); border-radius: 8px; overflow: hidden; height: 24px;">
+        <div id="autodetect-progress-bar" style="background: var(--accent); height: 100%; width: 0%; transition: width 0.3s;"></div>
       </div>
     </div>
   </div>
@@ -275,7 +285,7 @@
     <div class="modal-body">
       <div id="label-importer-list"></div>
       <div id="label-importer-form" style="display:none"></div>
-      <button id="label-importer-back" style="display:none; margin-top:12px; padding:6px 14px; background:#3a3d50; color:#ccc; border:1px solid #4a4d60; border-radius:4px; cursor:pointer;">&#8592; Back</button>
+      <button id="label-importer-back" style="display:none; margin-top:12px; padding:6px 14px; background:var(--bg-secondary-btn); color:var(--text-btn-secondary); border:1px solid var(--border-secondary); border-radius:4px; cursor:pointer;">&#8592; Back</button>
     </div>
   </div>
 </div>
@@ -290,7 +300,7 @@
     <div class="modal-body">
       <div id="processor-importer-list"></div>
       <div id="processor-importer-form" style="display:none"></div>
-      <button id="processor-importer-back" style="display:none; margin-top:12px; padding:6px 14px; background:#3a3d50; color:#ccc; border:1px solid #4a4d60; border-radius:4px; cursor:pointer;">&#8592; Back</button>
+      <button id="processor-importer-back" style="display:none; margin-top:12px; padding:6px 14px; background:var(--bg-secondary-btn); color:var(--text-btn-secondary); border:1px solid var(--border-secondary); border-radius:4px; cursor:pointer;">&#8592; Back</button>
     </div>
   </div>
 </div>
@@ -317,9 +327,9 @@
       <h2>Analyzing Labeling Progress</h2>
     </div>
     <div class="modal-body">
-      <div id="labeling-analysis-text" style="margin-bottom: 16px; color: #aaa; font-size: 0.9rem;">Training models over label history…</div>
-      <div style="background: #2a2d3a; border-radius: 8px; overflow: hidden; height: 24px; position: relative;">
-        <div id="labeling-analysis-bar" style="background: linear-gradient(90deg, #7c8aff, #a0aaff); height: 100%; width: 0%; transition: width 0.3s;"></div>
+      <div id="labeling-analysis-text" style="margin-bottom: 16px; color: var(--text-secondary); font-size: 0.9rem;">Training models over label history…</div>
+      <div style="background: var(--border); border-radius: 8px; overflow: hidden; height: 24px; position: relative;">
+        <div id="labeling-analysis-bar" style="background: linear-gradient(90deg, var(--accent), var(--accent-light)); height: 100%; width: 0%; transition: width 0.3s;"></div>
         <div id="labeling-analysis-pct" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.75rem; color: #fff; font-weight: bold;">0%</div>
       </div>
     </div>
