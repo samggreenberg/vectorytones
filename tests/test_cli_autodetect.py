@@ -79,12 +79,14 @@ _PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
 @pytest.fixture(autouse=True)
 def _reset_processors():
     """Clean up global favorite detectors and settings cache after each test."""
+    import vtsearch.settings as settings_mod
+
+    original_path = settings_mod.SETTINGS_PATH
     yield
     from vtsearch.utils.state import favorite_detectors
 
-    import vtsearch.settings as settings_mod
-
     favorite_detectors.clear()
+    settings_mod.SETTINGS_PATH = original_path
     settings_mod.reset()
 
 
