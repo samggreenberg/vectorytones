@@ -219,6 +219,18 @@ def ensure_favorite_processors_imported() -> list[str]:
     return imported
 
 
+def set_settings_path(path: str | Path) -> None:
+    """Override the settings file path and reset the in-memory cache.
+
+    Call this before :func:`ensure_favorite_processors_imported` to load
+    favorite processors from a custom settings file (e.g. the ``--settings``
+    CLI flag).
+    """
+    global SETTINGS_PATH, _settings
+    SETTINGS_PATH = Path(path)
+    _settings = None  # force reload on next access
+
+
 def reset() -> None:
     """Reset the in-memory cache (for testing)."""
     global _settings
