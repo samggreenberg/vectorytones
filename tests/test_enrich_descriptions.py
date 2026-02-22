@@ -382,8 +382,6 @@ class TestEvalTextSortEnrich:
 
         call_kwargs = []
 
-        orig_embed = embed_text_query
-
         def mock_embed(text, media_type, enrich=False):
             call_kwargs.append({"enrich": enrich})
             if "cat" in text:
