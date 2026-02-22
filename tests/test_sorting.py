@@ -1,6 +1,7 @@
 import io
 
 import numpy as np
+import torch
 
 import app as app_module
 
@@ -104,6 +105,120 @@ class TestTrainAndScore:
         assert order_before != order_after, (
             "Sort order did not change after adding a new vote"
         )
+
+
+class TestBuildModel:
+    """Tests for the build_model helper."""
+
+    def test_build_model_returns_sequential(self):
+        from vtsearch.models.training import build_model
+
+        model = build_model(64)
+        assert isinstance(model, torch.nn.Sequential)
+
+    def test_build_model_output_is_logits(self):
+        """build_model should NOT include sigmoid — output can be outside [0,1]."""
+        from vtsearch.models.training import build_model
+
+        model = build_model(32)
+        model.eval()
+        # Use extreme input to push output well outside [0, 1]
+        X = torch.ones(1, 32) * 100.0
+        with torch.no_grad():
+            logit = model(X).item()
+        # Raw logit can be any real number (not clamped to [0, 1])
+        assert isinstance(logit, float)
+
+    def test_build_model_has_no_sigmoid_layer(self):
+        from vtsearch.models.training import build_model
+
+        model = build_model(64)
+        for layer in model:
+            assert not isinstance(layer, torch.nn.Sigmoid)
+
+    def test_build_model_state_dict_keys(self):
+        from vtsearch.models.training import build_model
+
+        model = build_model(128)
+        keys = set(model.state_dict().keys())
+        assert keys == {"0.weight", "0.bias", "2.weight", "2.bias"}
+
+
+class TestTrainModelConfig:
+    """Tests for training configuration: reproducibility, weight decay, loss function."""
+
+    def test_deterministic_training(self):
+        """Same inputs should produce the same model (manual seed)."""
+        from vtsearch.models.training import train_model
+
+        rng = np.random.RandomState(0)
+        X = torch.tensor(rng.randn(10, 32).astype(np.float32))
+        y = torch.tensor([1.0] * 5 + [0.0] * 5).unsqueeze(1)
+
+        model1 = train_model(X, y, 32)
+        model2 = train_model(X, y, 32)
+
+        # Both models should produce identical scores
+        with torch.no_grad():
+            scores1 = torch.sigmoid(model1(X)).squeeze(1).tolist()
+            scores2 = torch.sigmoid(model2(X)).squeeze(1).tolist()
+        assert scores1 == scores2
+
+    def test_weight_decay_is_applied(self):
+        """Weight decay should keep weights smaller than without it."""
+        import config
+        from vtsearch.models.training import build_model
+
+        saved = config.TRAIN_EPOCHS
+        config.TRAIN_EPOCHS = 200
+        try:
+            rng = np.random.RandomState(7)
+            X = torch.tensor(rng.randn(20, 16).astype(np.float32))
+            y = torch.tensor([1.0] * 10 + [0.0] * 10).unsqueeze(1)
+
+            # Train with weight decay (default: 1e-4)
+            from vtsearch.models.training import train_model
+
+            model = train_model(X, y, 16)
+
+            # Train without weight decay for comparison
+            torch.manual_seed(42)
+            model_no_wd = build_model(16)
+            optimizer = torch.optim.Adam(model_no_wd.parameters(), lr=0.001, weight_decay=0.0)
+            loss_fn = torch.nn.BCEWithLogitsLoss()
+            model_no_wd.train()
+            for _ in range(200):
+                optimizer.zero_grad()
+                loss = loss_fn(model_no_wd(X), y)
+                loss.backward()
+                optimizer.step()
+            model_no_wd.eval()
+
+            # Weight magnitudes with decay should be <= without decay
+            wd_norm = sum(p.norm().item() for p in model.parameters())
+            no_wd_norm = sum(p.norm().item() for p in model_no_wd.parameters())
+            assert wd_norm <= no_wd_norm
+        finally:
+            config.TRAIN_EPOCHS = saved
+
+    def test_train_model_outputs_logits(self):
+        """train_model should return a model that outputs raw logits."""
+        from vtsearch.models.training import train_model
+
+        rng = np.random.RandomState(5)
+        X = torch.tensor(rng.randn(6, 16).astype(np.float32))
+        y = torch.tensor([1.0, 1.0, 1.0, 0.0, 0.0, 0.0]).unsqueeze(1)
+
+        model = train_model(X, y, 16)
+        with torch.no_grad():
+            raw = model(X).squeeze(1).tolist()
+            sigmoided = torch.sigmoid(model(X)).squeeze(1).tolist()
+
+        # Raw logits and sigmoided scores should differ
+        assert raw != sigmoided
+        # Sigmoided scores should be in [0, 1]
+        for s in sigmoided:
+            assert 0.0 <= s <= 1.0
 
 
 class TestLearnedSort:

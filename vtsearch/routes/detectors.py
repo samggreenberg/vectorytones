@@ -6,10 +6,10 @@ from pathlib import Path
 
 import numpy as np
 import torch
-import torch.nn as nn
 from flask import Blueprint, jsonify, request
 
 from vtsearch.models import (
+    build_model,
     calculate_cross_calibration_threshold,
     embed_audio_file,
     embed_image_file,
@@ -99,12 +99,7 @@ def detector_sort():
     # Determine input_dim from the first layer weights
     input_dim = len(weights["0.weight"][0])
 
-    model = nn.Sequential(
-        nn.Linear(input_dim, 64),
-        nn.ReLU(),
-        nn.Linear(64, 1),
-        nn.Sigmoid(),
-    )
+    model = build_model(input_dim)
 
     # Load weights
     state_dict = {}
@@ -118,7 +113,7 @@ def detector_sort():
     all_embs = np.array([clips[cid]["embedding"] for cid in all_ids])
     X_all = torch.tensor(all_embs, dtype=torch.float32)
     with torch.no_grad():
-        scores = model(X_all).squeeze(1).tolist()
+        scores = torch.sigmoid(model(X_all)).squeeze(1).tolist()
 
     results = [{"id": cid, "score": round(s, 4)} for cid, s in zip(all_ids, scores)]
     results.sort(key=lambda x: x["score"], reverse=True)
@@ -407,12 +402,8 @@ def auto_detect():
         threshold = detector_data["threshold"]
 
         input_dim = len(weights["0.weight"][0])
-        model = nn.Sequential(
-            nn.Linear(input_dim, 64),
-            nn.ReLU(),
-            nn.Linear(64, 1),
-            nn.Sigmoid(),
-        )
+
+        model = build_model(input_dim)
 
         state_dict = {}
         for key, value in weights.items():
@@ -421,7 +412,7 @@ def auto_detect():
         model.eval()
 
         with torch.no_grad():
-            scores = model(X_all).squeeze(1).tolist()
+            scores = torch.sigmoid(model(X_all)).squeeze(1).tolist()
 
         positive_hits = []
         for cid, score in zip(all_ids, scores):

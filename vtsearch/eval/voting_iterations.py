@@ -83,7 +83,7 @@ def _evaluate_on_test(
     X = torch.tensor(embs, dtype=torch.float32)
 
     with torch.no_grad():
-        scores = model(X).squeeze(1).tolist()
+        scores = torch.sigmoid(model(X)).squeeze(1).tolist()
 
     true_labels = [1.0 if clips_dict[cid]["category"] == target_category else 0.0 for cid in test_ids]
 

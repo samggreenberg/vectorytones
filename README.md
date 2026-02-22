@@ -231,6 +231,10 @@ vtsearch/
 └── README.md
 ```
 
+## Machine learning
+
+VTSearch trains a small MLP neural network on user votes to learn a binary classifier over pretrained embeddings. See [ML.md](ML.md) for full details on the model architecture, training configuration, PyTorch settings, and embedding models.
+
 ## Evaluation
 
 VTSearch includes an evaluation framework that measures sorting quality on demo datasets. Run it with:

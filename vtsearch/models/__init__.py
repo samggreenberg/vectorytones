@@ -10,6 +10,7 @@ from vtsearch.models.embeddings import (
 from vtsearch.models.loader import get_clap_model, get_clip_model, get_e5_model, get_xclip_model, initialize_models
 from vtsearch.models.progress import analyze_labeling_progress, clear_progress_cache, compute_labeling_status
 from vtsearch.models.training import (
+    build_model,
     calculate_cross_calibration_threshold,
     calculate_gmm_threshold,
     find_optimal_threshold,
@@ -31,6 +32,7 @@ __all__ = [
     "get_clip_model",
     "get_e5_model",
     # Training
+    "build_model",
     "train_model",
     "train_and_score",
     "calculate_gmm_threshold",
