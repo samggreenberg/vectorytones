@@ -14,6 +14,8 @@
   let audioVolume = 1.0; // Persisted volume across clip loads
   let volumeSaveTimer = null;
   let progressTimer = null;
+  let learnedSortController = null; // AbortController for in-flight background training
+  let learnedSortDebounce = null;   // Debounce timer for background training
   const clipList = document.getElementById("clip-list");
   const center = document.getElementById("center");
   const goodList = document.getElementById("good-list");
@@ -1353,6 +1355,54 @@
     }
   }
 
+  // ---- Background learned sort (non-blocking, for use after votes) ----
+
+  function scheduleLearnedSort(delay = 300) {
+    // Debounce: reset the timer on each call so rapid votes batch into one request
+    clearTimeout(learnedSortDebounce);
+    learnedSortDebounce = setTimeout(() => {
+      // Abort any in-flight background training request
+      if (learnedSortController) {
+        learnedSortController.abort();
+      }
+      learnedSortController = new AbortController();
+      const controller = learnedSortController;
+
+      showSortProgress("Training\u2026");
+
+      fetch("/api/learned-sort", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+      })
+        .then(res => {
+          if (!res.ok) {
+            sortOrder = null;
+            threshold = null;
+            hideSortProgress();
+            sortStatus.textContent = "Vote good & bad first";
+            renderClipList();
+            return null;
+          }
+          return res.json();
+        })
+        .then(data => {
+          if (!data) return;
+          sortOrder = data.results;
+          threshold = data.threshold;
+          hideSortProgress();
+          sortStatus.textContent = `Threshold: ${(threshold * 100).toFixed(1)}%`;
+          renderClipList();
+        })
+        .catch(err => {
+          if (err.name === "AbortError") return; // Superseded by a newer request
+          hideSortProgress();
+          sortStatus.textContent = `Error: ${err.message}`;
+          console.error("Learned sort error:", err);
+        });
+    }, delay);
+  }
+
   // ---- Load detector sort ----
 
   async function fetchLoadedSort(autoSelect = false) {
@@ -1740,12 +1790,19 @@
       body: JSON.stringify({ vote }),
     });
     await fetchVotes();
-    if (sortMode === "learned") await fetchLearnedSort();
 
-    // Auto-advance to next clip
+    // Auto-advance to next clip IMMEDIATELY using the current sort order,
+    // so the user isn't blocked waiting for model training to finish.
     const nextClip = findNextClip();
     if (nextClip && nextClip.id !== selected) {
       selectClip(nextClip.id);
+    }
+
+    // Kick off learned sort in the background (non-blocking).
+    // When training completes, sortOrder/threshold update and the clip list
+    // re-renders — but the user can keep voting in the meantime.
+    if (sortMode === "learned") {
+      scheduleLearnedSort();
     }
   }
 
