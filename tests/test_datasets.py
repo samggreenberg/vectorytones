@@ -87,7 +87,7 @@ class TestDemoDatasetReadiness:
         """Audio pkl exists but ESC-50 audio dir is absent → not ready."""
         import pickle
 
-        from config import DATA_DIR, EMBEDDINGS_DIR
+        from vtsearch.config import DATA_DIR, EMBEDDINGS_DIR
 
         esc50_dir = DATA_DIR / "ESC-50-master" / "audio"
         if esc50_dir.exists():
@@ -113,7 +113,7 @@ class TestDemoDatasetReadiness:
         """Audio pkl exists and ESC-50 audio dir exists but is empty → not ready."""
         import pickle
 
-        from config import DATA_DIR, EMBEDDINGS_DIR
+        from vtsearch.config import DATA_DIR, EMBEDDINGS_DIR
 
         esc50_dir = DATA_DIR / "ESC-50-master" / "audio"
         if esc50_dir.exists() and any(esc50_dir.iterdir()):
@@ -145,7 +145,7 @@ class TestDemoDatasetReadiness:
         """Video pkl exists but UCF-101 dir is absent → not ready."""
         import pickle
 
-        from config import EMBEDDINGS_DIR, VIDEO_DIR
+        from vtsearch.config import EMBEDDINGS_DIR, VIDEO_DIR
 
         ucf101_dir = VIDEO_DIR / "ucf101"
         if ucf101_dir.exists():

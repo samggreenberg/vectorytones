@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from flask import Blueprint, jsonify, request
 
-from config import DATA_DIR
+from vtsearch.config import DATA_DIR
 from vtsearch.models import (
     analyze_labeling_progress,
     build_model,
