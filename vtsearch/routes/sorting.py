@@ -10,7 +10,6 @@ from flask import Blueprint, jsonify, request
 from vtsearch.config import DATA_DIR
 from vtsearch.models import (
     analyze_labeling_progress,
-    build_model,
     calculate_cross_calibration_threshold,
     calculate_gmm_threshold,
     compute_labeling_status,
