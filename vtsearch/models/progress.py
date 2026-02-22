@@ -109,7 +109,7 @@ def _ensure_cache(
                 model = train_model(X, y, input_dim, inclusion_value)
 
                 with torch.no_grad():
-                    scores = model(X).squeeze(1).tolist()
+                    scores = torch.sigmoid(model(X)).squeeze(1).tolist()
                 threshold = find_optimal_threshold(scores, y_list, inclusion_value)
 
                 # --- Stability ---
@@ -128,7 +128,7 @@ def _ensure_cache(
                     X_unlabeled = torch.tensor(unlabeled_embs, dtype=torch.float32)
 
                     with torch.no_grad():
-                        scores_unl = model(X_unlabeled).squeeze(1).tolist()
+                        scores_unl = torch.sigmoid(model(X_unlabeled)).squeeze(1).tolist()
 
                     predictions: dict[int, int] = {
                         cid: 1 if score >= threshold else 0 for cid, score in zip(unlabeled_ids, scores_unl)
@@ -220,7 +220,7 @@ def _eval_cached_models(
             continue
 
         with torch.no_grad():
-            scores = step["model"](X_eval).squeeze(1).tolist()
+            scores = torch.sigmoid(step["model"](X_eval)).squeeze(1).tolist()
 
         fp = fn = 0
         for score, true_label in zip(scores, eval_labels):

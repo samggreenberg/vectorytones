@@ -53,6 +53,26 @@ def calculate_gmm_threshold(scores: list[float]) -> float:
         return float(np.median(scores))
 
 
+def build_model(input_dim: int) -> nn.Sequential:
+    """Construct the MLP architecture (untrained).
+
+    The model outputs raw logits (no sigmoid).  Apply ``torch.sigmoid``
+    to the output at inference time to obtain probabilities in [0, 1].
+
+    Args:
+        input_dim: Dimensionality of the input embeddings.
+
+    Returns:
+        An ``nn.Sequential`` model with layers:
+        ``Linear(input_dim, 64) -> ReLU -> Linear(64, 1)``.
+    """
+    return nn.Sequential(
+        nn.Linear(input_dim, 64),
+        nn.ReLU(),
+        nn.Linear(64, 1),
+    )
+
+
 def train_model(
     X_train: torch.Tensor,
     y_train: torch.Tensor,
@@ -61,9 +81,14 @@ def train_model(
 ) -> nn.Sequential:
     """Train a small MLP classifier and return the trained model.
 
-    Trains a two-layer MLP (input -> 64 -> 1) using weighted binary cross-entropy
-    loss. Class weights are adjusted based on ``inclusion_value`` to bias the
-    classifier toward including more (positive) or fewer (positive) items.
+    Trains a two-layer MLP (input -> 64 -> 1) using weighted binary
+    cross-entropy loss with logits (``BCEWithLogitsLoss``).  Class weights
+    are adjusted based on ``inclusion_value`` to bias the classifier toward
+    including more (positive) or fewer (positive) items.
+
+    A fixed seed (``torch.manual_seed(42)``) is set before model
+    construction so that the same inputs always produce the same trained
+    model.
 
     Args:
         X_train: Float tensor of shape ``(N, input_dim)`` containing training embeddings.
@@ -79,16 +104,14 @@ def train_model(
 
     Returns:
         A trained ``nn.Sequential`` model in eval mode with layers:
-        ``Linear(input_dim, 64) -> ReLU -> Linear(64, 1) -> Sigmoid``.
+        ``Linear(input_dim, 64) -> ReLU -> Linear(64, 1)``.
+        The model outputs raw logits — apply ``torch.sigmoid`` at inference.
     """
-    model = nn.Sequential(
-        nn.Linear(input_dim, 64),
-        nn.ReLU(),
-        nn.Linear(64, 1),
-        nn.Sigmoid(),
-    )
+    torch.manual_seed(42)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    model = build_model(input_dim)
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
 
     # Calculate class weights based on inclusion
     num_true = y_train.sum().item()
@@ -112,16 +135,17 @@ def train_model(
 
     # Create sample weights
     weights = torch.where(y_train == 1, weight_true, weight_false).squeeze()
-    loss_fn = nn.BCELoss(reduction="none")
+    loss_fn = nn.BCEWithLogitsLoss(reduction="none")
 
     model.train()
-    for _ in range(TRAIN_EPOCHS):
-        optimizer.zero_grad()
-        predictions = model(X_train)
-        losses = loss_fn(predictions, y_train)
-        weighted_loss = (losses.squeeze() * weights).mean()
-        weighted_loss.backward()
-        optimizer.step()
+    with torch.enable_grad():
+        for _ in range(TRAIN_EPOCHS):
+            optimizer.zero_grad()
+            logits = model(X_train)
+            losses = loss_fn(logits, y_train)
+            weighted_loss = (losses.squeeze() * weights).mean()
+            weighted_loss.backward()
+            optimizer.step()
 
     model.eval()
     return model
@@ -264,12 +288,12 @@ def calculate_cross_calibration_threshold(
 
     # Find t1: use M1 on D2
     with torch.no_grad():
-        scores1_on_2 = M1(X2).squeeze(1).tolist()
+        scores1_on_2 = torch.sigmoid(M1(X2)).squeeze(1).tolist()
     t1 = find_optimal_threshold(scores1_on_2, y_np[idx2].tolist(), inclusion_value)
 
     # Find t2: use M2 on D1
     with torch.no_grad():
-        scores2_on_1 = M2(X1).squeeze(1).tolist()
+        scores2_on_1 = torch.sigmoid(M2(X1)).squeeze(1).tolist()
     t2 = find_optimal_threshold(scores2_on_1, y_np[idx1].tolist(), inclusion_value)
 
     # Return mean
@@ -328,7 +352,7 @@ def train_and_score(
     all_embs = np.array([clips_dict[cid]["embedding"] for cid in all_ids])
     X_all = torch.tensor(all_embs, dtype=torch.float32)
     with torch.no_grad():
-        scores = model(X_all).squeeze(1).tolist()
+        scores = torch.sigmoid(model(X_all)).squeeze(1).tolist()
 
     # Sort by raw scores (full precision) so that tiny differences still
     # affect ordering.  Round only for the JSON response values.

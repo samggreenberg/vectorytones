@@ -10,6 +10,7 @@ from flask import Blueprint, jsonify, request
 from config import DATA_DIR
 from vtsearch.models import (
     analyze_labeling_progress,
+    build_model,
     calculate_cross_calibration_threshold,
     calculate_gmm_threshold,
     compute_labeling_status,
@@ -369,7 +370,7 @@ def label_file_sort():
         all_embs = np.array([clips[cid]["embedding"] for cid in all_ids])
         X_all = torch.tensor(all_embs, dtype=torch.float32)
         with torch.no_grad():
-            scores = model(X_all).squeeze(1).tolist()
+            scores = torch.sigmoid(model(X_all)).squeeze(1).tolist()
 
         # Sort by raw scores (full precision) before rounding for display.
         paired = sorted(zip(all_ids, scores), key=lambda x: x[1], reverse=True)

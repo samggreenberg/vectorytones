@@ -25,7 +25,6 @@ import gc
 import numpy as np
 import pytest
 import torch
-import torch.nn as nn
 
 # ---------------------------------------------------------------------------
 # Marker applied to every test in this module
@@ -85,7 +84,7 @@ class TestTrainModelGPU:
         # after moving the model to GPU
         model = model.to(device)
         with torch.no_grad():
-            scores = model(X)
+            scores = torch.sigmoid(model(X))
         assert scores.shape == (10, 1)
         assert scores.device.type == "cuda"
 
@@ -98,7 +97,7 @@ class TestTrainModelGPU:
 
         model = train_model(X, y, dim).to(device)
         with torch.no_grad():
-            scores = model(X).squeeze(1).cpu().numpy()
+            scores = torch.sigmoid(model(X)).squeeze(1).cpu().numpy()
         assert np.all(scores >= 0.0)
         assert np.all(scores <= 1.0)
 
@@ -121,7 +120,7 @@ class TestTrainModelGPU:
 
             model = train_model(X, y, dim).to(device)
             with torch.no_grad():
-                scores = model(X).squeeze(1).cpu().numpy()
+                scores = torch.sigmoid(model(X)).squeeze(1).cpu().numpy()
             avg_good = scores[:20].mean()
             avg_bad = scores[20:].mean()
             assert avg_good > avg_bad
@@ -147,8 +146,8 @@ class TestTrainModelGPU:
             model_inclusive = train_model(X, y, dim, inclusion_value=5).to(device)
 
             with torch.no_grad():
-                scores_neutral = model_neutral(X).squeeze(1).cpu().numpy()
-                scores_inclusive = model_inclusive(X).squeeze(1).cpu().numpy()
+                scores_neutral = torch.sigmoid(model_neutral(X)).squeeze(1).cpu().numpy()
+                scores_inclusive = torch.sigmoid(model_inclusive(X)).squeeze(1).cpu().numpy()
 
             # With high inclusion, the overall mean score should be higher
             assert scores_inclusive.mean() >= scores_neutral.mean() - 0.1
@@ -347,12 +346,9 @@ class TestDetectorGPU:
             weights = {k: v.tolist() for k, v in state_dict.items()}
 
             # Reconstruct on GPU (as a GPU-aware detector-sort would)
-            gpu_model = nn.Sequential(
-                nn.Linear(dim, 64),
-                nn.ReLU(),
-                nn.Linear(64, 1),
-                nn.Sigmoid(),
-            ).to(device)
+            from vtsearch.models.training import build_model
+
+            gpu_model = build_model(dim).to(device)
 
             loaded_state = {k: torch.tensor(v, dtype=torch.float32, device=device) for k, v in weights.items()}
             gpu_model.load_state_dict(loaded_state)
@@ -362,7 +358,7 @@ class TestDetectorGPU:
             all_embs = np.array([clips_dict[cid]["embedding"] for cid in sorted(clips_dict.keys())])
             X_all = torch.tensor(all_embs, dtype=torch.float32, device=device)
             with torch.no_grad():
-                scores = gpu_model(X_all).squeeze(1).cpu().numpy()
+                scores = torch.sigmoid(gpu_model(X_all)).squeeze(1).cpu().numpy()
 
             assert len(scores) == 20
             assert np.all(scores >= 0.0)
@@ -402,13 +398,13 @@ class TestDetectorGPU:
             # CPU scores
             model.eval()
             with torch.no_grad():
-                cpu_scores = model(X_all).squeeze(1).numpy()
+                cpu_scores = torch.sigmoid(model(X_all)).squeeze(1).numpy()
 
             # GPU scores
             gpu_model = model.to(device)
             X_all_gpu = X_all.to(device)
             with torch.no_grad():
-                gpu_scores = gpu_model(X_all_gpu).squeeze(1).cpu().numpy()
+                gpu_scores = torch.sigmoid(gpu_model(X_all_gpu)).squeeze(1).cpu().numpy()
 
             np.testing.assert_allclose(cpu_scores, gpu_scores, atol=1e-5)
         finally:
@@ -446,7 +442,7 @@ class TestDetectorGPU:
                 model = train_model(X, y, dim).to(device)
 
                 with torch.no_grad():
-                    scores = model(X_all).squeeze(1).cpu().numpy()
+                    scores = torch.sigmoid(model(X_all)).squeeze(1).cpu().numpy()
 
                 detector_results[f"det-{det_idx}"] = scores
 
