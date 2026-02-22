@@ -258,12 +258,10 @@ def _score_clips_with_detectors(
         threshold = detector_data["threshold"]
 
         input_dim = len(weights["0.weight"][0])
-        model = nn.Sequential(
-            nn.Linear(input_dim, 64),
-            nn.ReLU(),
-            nn.Linear(64, 1),
-            nn.Sigmoid(),
-        )
+
+        from vtsearch.models.training import build_model
+
+        model = build_model(input_dim)
 
         state_dict = {}
         for key, value in weights.items():
@@ -272,7 +270,7 @@ def _score_clips_with_detectors(
         model.eval()
 
         with torch.no_grad():
-            scores = model(X_all).squeeze(1).tolist()
+            scores = torch.sigmoid(model(X_all)).squeeze(1).tolist()
 
         positive_hits: list[dict[str, Any]] = []
         for cid, score in zip(all_ids, scores):
